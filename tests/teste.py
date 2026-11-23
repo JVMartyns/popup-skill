@@ -236,6 +236,17 @@ cod, out, err, ch = roda(["ask", "--lang", "en", "--greeting", "G6?", "--questio
 checa("pergunta grande demais para a linha de comando → não chama o PowerShell", cod == 6 and not ch, (cod, ch[:1], err))
 cod, out, err, ch = roda(["yesno", "--backend", "powershell", "--lang", "en", "--greeting", "G7?", "--question", "Q?"], ["0|yes"])
 checa("Linux fora do WSL não usa powershell.exe", cod == 6 and not ch, (cod, [c["prog"] for c in ch]))
+cod, out, err, ch = roda(["ask", "--lang", "pt-BR", "--greeting", "Oi! ⭐ Me dá uma mão? 🙌", "--question", "Qual ✏️ estilo?",
+                          "--context", "⏳ rapidinho", "--option", "🎯|Só um pop-up|Fecha depois ✅",
+                          "--option", "🙋‍♂️|Mais um|Abre outro", "--option", "1️⃣|Chamada ao terminal|Mostra o fluxo"], ["0|Mais um"], WSL)
+d = ch[0]["dados"] if ch else {}
+checa("janela do Windows sem emoji (eles viravam ▯)",
+      d and [o["rotulo"] for o in d["opcoes"]] == ["Só um pop-up — Fecha depois", "Mais um — Abre outro", "1 Chamada ao terminal — Mostra o fluxo"]
+      and d["chamada"] == "Oi! Me dá uma mão?" and d["pergunta"] == "Qual estilo?" and d["contexto"] == "rapidinho", d)
+checa("título mantém o ✨ e a resposta é o título original", d and d["titulo"].startswith("✨") and (cod, out) == (0, "Mais um"), (d.get("titulo"), cod, out))
+sys.path.insert(0, SK); import popup as _pp
+checa("tirar_emoji: acentos, CJK e símbolos comuns ficam", _pp.tirar_emoji("Ação ñ ü 中文 日本語 — © → ok") == "Ação ñ ü 中文 日本語 — © → ok", _pp.tirar_emoji("Ação ñ ü 中文 日本語 — © → ok"))
+
 e9 = dict(WSL, POPUP_STATE_DIR=tempfile.mkdtemp(dir=S))
 roda(["yesno", "--lang", "en", "--greeting", "Same one?", "--question", "Q?"], ["0|yes"], e9)
 cod, out, err, ch = roda(["yesno", "--lang", "en", "--greeting", "Same one?", "--question", "Q?"], ["0|yes"], e9)

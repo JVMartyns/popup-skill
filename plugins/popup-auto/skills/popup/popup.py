@@ -535,12 +535,15 @@ LIMITE_LINHA_COMANDO = 32000  # o Windows aceita até 32767 caracteres
 def comando_powershell(a, exe):
     """Monta o comando: script e dados vão em -EncodedCommand, sem arquivo temporário
     nem variável de ambiente (que não atravessam do WSL para o Windows sem WSLENV)."""
+    # O WinForms desenha emoji como quadradinhos (▯), então os textos da janela vão sem
+    # emoji. O título fica com eles: a barra de título é desenhada pelo Windows.
     dados = {
-        "titulo": titulo_janela(), "modo": a.modo, "chamada": a.chamada,
-        "pergunta": a.pergunta, "contexto": a.contexto, "timeout": a.timeout,
-        "sem_outra": a.sem_outra, "t": T,
+        "titulo": titulo_janela(), "modo": a.modo, "chamada": tirar_emoji(a.chamada),
+        "pergunta": tirar_emoji(a.pergunta), "contexto": tirar_emoji(a.contexto),
+        "timeout": a.timeout, "sem_outra": a.sem_outra,
+        "t": {k: tirar_emoji(v) for k, v in T.items()},
         "cpre": contador_partes()[0], "cpos": contador_partes()[1],
-        "opcoes": [{"rotulo": rotulo(*o), "valor": o[1]} for o in opcoes(a)],
+        "opcoes": [{"rotulo": tirar_emoji(rotulo(*o)), "valor": o[1]} for o in opcoes(a)],
     }
     b64_dados = base64.b64encode(json.dumps(dados, ensure_ascii=False).encode("utf-8")).decode("ascii")
     script = PS_FORM.replace("__DADOS_B64__", b64_dados)
@@ -563,14 +566,29 @@ def ui_powershell(a):
     return out or None, cod
 
 
+# Faixas de emoji no plano básico (o resto dos emoji fica acima de U+FFFF).
+_EMOJI_BMP = ((0x2300, 0x23FF),   # ⌛ ⏳ ⏰
+              (0x2600, 0x27BF),   # ☀ ✏ ✅ ❤
+              (0x2B00, 0x2BFF),   # ⭐ ⬆
+              (0x3030, 0x3030), (0x303D, 0x303D), (0x3297, 0x3299))
+_INVISIVEIS = {0xFE0E, 0xFE0F, 0x200D, 0x20E3}  # seletores de variação, ZWJ, keycap
+
+
+def _e_emoji(c):
+    o = ord(c)
+    return o > 0xFFFF or o in _INVISIVEIS or any(a <= o <= b for a, b in _EMOJI_BMP)
+
+
+def tirar_emoji(s):
+    """Tira os emoji e arruma os espaços que sobram."""
+    if not s or not any(_e_emoji(c) for c in s):
+        return s
+    return " ".join("".join(c for c in s if not _e_emoji(c)).split())
+
+
 def sem_emoji(s):
     """Tk no Linux pode travar com emoji colorido (X BadLength); tira os emoji."""
-    if not LINUX:
-        return s
-    fora = {0xFE0F, 0x200D}
-    limpo = "".join(c for c in s if ord(c) <= 0xFFFF and ord(c) not in fora
-                    and not 0x2600 <= ord(c) <= 0x27BF)
-    return " ".join(limpo.split()) if limpo != s else s
+    return tirar_emoji(s) if LINUX else s
 
 
 def ui_tkinter(a):

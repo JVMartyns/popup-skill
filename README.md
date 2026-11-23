@@ -27,10 +27,10 @@ instead of the terminal, so you can work in another window and still answer.
   | Linux (KDE, LXQt) | kdialog → GTK4 + libadwaita → zenity → Tkinter |
   | macOS | osascript → Tkinter |
   | Windows | Tkinter → PowerShell (WinForms) |
-  | WSL *(experimental)* | native Windows window via `powershell.exe` → GTK4 → zenity → kdialog → Tkinter |
+  | WSL | native Windows window via `powershell.exe` → GTK4 → zenity → kdialog → Tkinter |
 
   On WSL the window opens on Windows itself, so it works without WSLg or Linux GUI
-  packages. No screen at all (SSH, CI) → exit 6, and the agent asks in the terminal instead.
+  packages. The Windows window shows no emoji (WinForms draws them as empty squares). No screen at all (SSH, CI) → exit 6, and the agent asks in the terminal instead.
 - **10 languages for the window texts:** pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja
   (others fall back to English). The agent writes the greeting and question in *your*
   language and passes `--lang`.
@@ -176,8 +176,8 @@ python3 tests/teste.py            # 69 tests, no window (fake zenity/kdialog)
 CI runs both (`scripts/build.py --check` fails if `plugins/` is out of date).
 `tests/manual/screenshot_gtk.py` renders the GTK window to a PNG.
 
-Untested on real hardware so far: kdialog, osascript (macOS), PowerShell (Windows) and
-WSL. If you can try one of them, [docs/TESTING.md](docs/TESTING.md) has a 5-minute
+Tested on real hardware: GNOME (GTK and zenity) and WSL (native Windows window).
+Untested so far: kdialog, osascript (macOS) and PowerShell from native Windows Python. If you can try one of them, [docs/TESTING.md](docs/TESTING.md) has a 5-minute
 checklist. Reports welcome.
 
 ## License
