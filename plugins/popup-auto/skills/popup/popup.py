@@ -459,7 +459,8 @@ $laranja = [Drawing.Color]::FromArgb(217, 119, 87)
 $rxEmoji = '[\uD800-\uDBFF\u2300-\u23FF\u2600-\u27BF\u2B00-\u2BFF\u3030\u303D\u3297\u3299\u200D\u20E3\uFE0E\uFE0F]'
 function FonteTexto($t, $tam, $estilo) {
   $nome = if ($t -match $rxEmoji) { 'Segoe UI Emoji' } else { 'Segoe UI' }
-  # O Segoe UI Emoji nao tem negrito; pedir Bold nele dispara ArgumentException.
+  # Nem toda fonte tem negrito (o Segoe UI Emoji, por exemplo); pedir um estilo
+  # indisponivel dispara ArgumentException.
   try {
     $fam = New-Object Drawing.FontFamily($nome)
     if (-not ($fam.IsStyleAvailable($estilo))) { $estilo = [Drawing.FontStyle]::Regular }

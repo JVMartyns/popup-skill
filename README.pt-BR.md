@@ -67,7 +67,28 @@ rodar com `/popup`, acrescente em `~/.claude/settings.json` (ou no `.claude/sett
 { "skillOverrides": { "popup": "user-invocable-only" } }
 ```
 
-### Outros agentes (Codex, Gemini CLI, Cursor, Pi…)
+### Cursor
+
+Clone o repositório e linke a skill na pasta de skills do Cursor:
+
+```bash
+git clone https://github.com/JVMartyns/popup-skill
+mkdir -p ~/.cursor/skills
+ln -sfn "$PWD/popup-skill/skills/popup" ~/.cursor/skills/popup
+```
+
+Para instalar só num projeto, use `.cursor/skills/` na raiz do projeto. Para copiar
+em vez de linkar: `cp -r popup-skill/skills/popup ~/.cursor/skills/`. No Windows, a
+pasta é `%USERPROFILE%\.cursor\skills\popup`.
+
+Recarregue a janela do Cursor (`Ctrl+Shift+P` → **Developer: Reload Window**) e, no
+chat, digite `/popup` e o pedido.
+
+No Cursor Flatpak, o shell do agente roda dentro do sandbox, onde GTK/PyGObject e
+Tkinter normalmente não estão disponíveis; o zenity está, então a janela cai na
+versão de lista simples. Fora do Flatpak, a janela GTK é usada.
+
+### Outros agentes (Codex, Gemini CLI, Pi…)
 
 Copie `skills/popup/` para a pasta de skills do agente (veja a documentação dele). Se
 ele não carregar skills, cole o `SKILL.md` nas instruções dele (`AGENTS.md`,

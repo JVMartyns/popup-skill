@@ -66,7 +66,28 @@ This copy lets Claude turn it on by itself when it fits. To make it manual-only
 { "skillOverrides": { "popup": "user-invocable-only" } }
 ```
 
-### Other agents (Codex, Gemini CLI, Cursor, Pi…)
+### Cursor
+
+Clone the repository and link the skill into Cursor's skills folder:
+
+```bash
+git clone https://github.com/JVMartyns/popup-skill
+mkdir -p ~/.cursor/skills
+ln -sfn "$PWD/popup-skill/skills/popup" ~/.cursor/skills/popup
+```
+
+For a single project, use `.cursor/skills/` at the project root instead. To copy
+instead of linking: `cp -r popup-skill/skills/popup ~/.cursor/skills/`. On Windows,
+the folder is `%USERPROFILE%\.cursor\skills\popup`.
+
+Reload the Cursor window (`Ctrl+Shift+P` → **Developer: Reload Window**) and, in
+chat, type `/popup` and the request.
+
+In the Cursor Flatpak, the agent shell runs inside the sandbox, where GTK/PyGObject
+and Tkinter are usually unavailable; zenity is bundled, so the window falls back to
+the simple-list version. Outside Flatpak, the GTK window is used.
+
+### Other agents (Codex, Gemini CLI, Pi…)
 
 Copy `skills/popup/` into the agent's skills folder (see its docs). If the agent does
 not load skills, paste `SKILL.md` into its instructions file (`AGENTS.md`, `GEMINI.md`…)
