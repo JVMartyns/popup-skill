@@ -1,0 +1,20 @@
+# Chamadas favoritas: uma por linha, na seção do idioma da conversa.
+# Linhas com # são comentários. Seções: [pt-BR], [pt-PT], [en], [es], [ja] etc.
+#
+# Este arquivo fica na sua pasta de configuração (popup.py favorita list mostra onde)
+# e não é apagado quando a skill é atualizada.
+#
+# Para acrescentar: edite este arquivo, peça ao agente, use
+#   popup.py favorita add --idioma pt-BR "texto"
+# ou clique na ⭐ da janela GTK.
+#
+# Regras (o script recusa o pop-up se não forem cumpridas):
+#   - cada chamada, favorita ou não, no máximo uma vez por tarefa;
+#   - nunca duas favoritas em pop-ups seguidos;
+#   - favorita só vale no idioma/variante da seção.
+
+[pt-BR]
+
+[en]
+
+[es]

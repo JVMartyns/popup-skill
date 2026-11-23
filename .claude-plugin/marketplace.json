@@ -1,0 +1,21 @@
+{
+  "name": "popup-skill",
+  "owner": {
+    "name": "JVMartyns"
+  },
+  "metadata": {
+    "description": "Ask questions through desktop pop-ups instead of the terminal, in 10 languages, on Linux, macOS and Windows."
+  },
+  "plugins": [
+    {
+      "name": "popup",
+      "source": "./plugins/popup",
+      "description": "Manual: runs only when you type /popup."
+    },
+    {
+      "name": "popup-auto",
+      "source": "./plugins/popup-auto",
+      "description": "Claude can turn it on by itself when you say you'll be away or ask for pop-ups."
+    }
+  ]
+}
