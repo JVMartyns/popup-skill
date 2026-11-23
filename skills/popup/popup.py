@@ -453,6 +453,23 @@ $d = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__DADOS_B64__'
 $script:resp = $null; $script:cod = 1; $script:rest = [int]$d.timeout
 $laranja = [Drawing.Color]::FromArgb(217, 119, 87)
 
+# O Segoe UI nao tem glifo para emoji astral (acima de U+FFFF): vira quadradinho.
+# Com Segoe UI Emoji eles aparecem, em preto e branco (GDI/GDI+ nao fazem cor).
+# Mesmas faixas que o popup.py usa para detectar emoji.
+$rxEmoji = '[\uD800-\uDBFF\u2300-\u23FF\u2600-\u27BF\u2B00-\u2BFF\u3030\u303D\u3297\u3299\u200D\u20E3\uFE0E\uFE0F]'
+function FonteTexto($t, $tam, $estilo) {
+  $nome = if ($t -match $rxEmoji) { 'Segoe UI Emoji' } else { 'Segoe UI' }
+  # Nem toda fonte tem negrito (o Segoe UI Emoji, por exemplo); pedir um estilo
+  # indisponivel dispara ArgumentException.
+  try {
+    $fam = New-Object Drawing.FontFamily($nome)
+    if (-not ($fam.IsStyleAvailable($estilo))) { $estilo = [Drawing.FontStyle]::Regular }
+    return (New-Object Drawing.Font($fam, $tam, $estilo))
+  } catch {
+    return (New-Object Drawing.Font('Segoe UI', $tam))
+  }
+}
+
 $f = New-Object Windows.Forms.Form
 $f.Text = $d.titulo; $f.TopMost = $true; $f.StartPosition = 'CenterScreen'
 $f.AutoSize = $true; $f.AutoSizeMode = 'GrowAndShrink'; $f.KeyPreview = $true
@@ -466,7 +483,7 @@ function Rotulo($t, $tam, $negrito, $cor) {
   $l = New-Object Windows.Forms.Label
   $l.Text = $t; $l.AutoSize = $true; $l.MaximumSize = New-Object Drawing.Size(540, 0)
   $estilo = if ($negrito) { [Drawing.FontStyle]::Bold } else { [Drawing.FontStyle]::Regular }
-  $l.Font = New-Object Drawing.Font('Segoe UI', $tam, $estilo)
+  $l.Font = FonteTexto $t $tam $estilo
   if ($cor) { $l.ForeColor = $cor }
   $l.Margin = New-Object Windows.Forms.Padding(0, 0, 0, 8)
   $p.Controls.Add($l); return $l
@@ -474,7 +491,7 @@ function Rotulo($t, $tam, $negrito, $cor) {
 function Botao($pai, $t, $valor, $codigo, $largo) {
   $b = New-Object Windows.Forms.Button
   $b.Text = $t; $b.Tag = @($valor, $codigo); $b.AutoSize = $true
-  $b.Font = New-Object Drawing.Font('Segoe UI', 10)
+  $b.Font = FonteTexto $t 10 ([Drawing.FontStyle]::Regular)
   if ($largo) { $b.MinimumSize = New-Object Drawing.Size(540, 36); $b.TextAlign = 'MiddleLeft' }
   $b.add_Click({ param($s, $e) $script:resp = $s.Tag[0]; $script:cod = $s.Tag[1]; $s.FindForm().Close() })
   $pai.Controls.Add($b); return $b
@@ -543,15 +560,16 @@ LIMITE_LINHA_COMANDO = 32000  # o Windows aceita até 32767 caracteres
 def comando_powershell(a, exe):
     """Monta o comando: script e dados vão em -EncodedCommand, sem arquivo temporário
     nem variável de ambiente (que não atravessam do WSL para o Windows sem WSLENV)."""
-    # O WinForms desenha emoji como quadradinhos (▯), então os textos da janela vão sem
-    # emoji. O título fica com eles: a barra de título é desenhada pelo Windows.
+    # A janela do Windows mostra os emoji: o PS_FORM troca para a fonte Segoe UI Emoji
+    # nos textos que têm emoji. O GDI/GDI+ não desenha emoji colorido, só o contorno
+    # (preto e branco), mas desenha — o Segoe UI padrão é que virava quadradinho.
     dados = {
-        "titulo": titulo_janela(), "modo": a.modo, "chamada": tirar_emoji(a.chamada),
-        "pergunta": tirar_emoji(a.pergunta), "contexto": tirar_emoji(a.contexto),
+        "titulo": titulo_janela(), "modo": a.modo, "chamada": a.chamada,
+        "pergunta": a.pergunta, "contexto": a.contexto,
         "timeout": a.timeout, "sem_outra": a.sem_outra,
-        "t": {k: tirar_emoji(v) for k, v in T.items()},
+        "t": dict(T),
         "cpre": contador_partes()[0], "cpos": contador_partes()[1],
-        "opcoes": [{"rotulo": tirar_emoji(rotulo(*o)), "valor": o[1]} for o in opcoes(a)],
+        "opcoes": [{"rotulo": rotulo(*o), "valor": o[1]} for o in opcoes(a)],
     }
     b64_dados = base64.b64encode(json.dumps(dados, ensure_ascii=False).encode("utf-8")).decode("ascii")
     script = PS_FORM.replace("__DADOS_B64__", b64_dados)

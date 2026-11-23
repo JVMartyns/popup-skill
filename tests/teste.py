@@ -240,9 +240,12 @@ cod, out, err, ch = roda(["ask", "--lang", "pt-BR", "--greeting", "Oi! ⭐ Me d�
                           "--context", "⏳ rapidinho", "--option", "🎯|Só um pop-up|Fecha depois ✅",
                           "--option", "🙋‍♂️|Mais um|Abre outro", "--option", "1️⃣|Chamada ao terminal|Mostra o fluxo"], ["0|Mais um"], WSL)
 d = ch[0]["dados"] if ch else {}
-checa("janela do Windows sem emoji (eles viravam ▯)",
-      d and [o["rotulo"] for o in d["opcoes"]] == ["Só um pop-up — Fecha depois", "Mais um — Abre outro", "1 Chamada ao terminal — Mostra o fluxo"]
-      and d["chamada"] == "Oi! Me dá uma mão?" and d["pergunta"] == "Qual estilo?" and d["contexto"] == "rapidinho", d)
+checa("janela do Windows mantém os emoji (vão em Segoe UI Emoji)",
+      d and [o["rotulo"] for o in d["opcoes"]] == ["🎯  Só um pop-up — Fecha depois ✅", "🙋‍♂️  Mais um — Abre outro", "1️⃣  Chamada ao terminal — Mostra o fluxo"]
+      and d["chamada"] == "Oi! ⭐ Me dá uma mão? 🙌" and d["pergunta"] == "Qual ✏️ estilo?" and d["contexto"] == "⏳ rapidinho", d)
+checa("script do Windows troca a fonte quando o texto tem emoji",
+      ch and "Segoe UI Emoji" in ch[0]["script"] and "FonteTexto" in ch[0]["script"]
+      and "IsStyleAvailable" in ch[0]["script"], (ch[0].get("script", "")[:80] if ch else None))
 checa("título mantém o ✨ e a resposta é o título original", d and d["titulo"].startswith("✨") and (cod, out) == (0, "Mais um"), (d.get("titulo"), cod, out))
 sys.path.insert(0, SK); import popup as _pp
 checa("tirar_emoji: acentos, CJK e símbolos comuns ficam", _pp.tirar_emoji("Ação ñ ü 中文 日本語 — © → ok") == "Ação ñ ü 中文 日本語 — © → ok", _pp.tirar_emoji("Ação ñ ü 中文 日本語 — © → ok"))

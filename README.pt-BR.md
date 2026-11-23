@@ -30,8 +30,9 @@ em vez do terminal. Você pode trabalhar em outra janela e responder mesmo assim
   | WSL | janela nativa do Windows pelo `powershell.exe` → GTK4 → zenity → kdialog → Tkinter |
 
   No WSL a janela abre no próprio Windows, então funciona sem WSLg e sem pacotes
-  gráficos do Linux. A janela do Windows não mostra emoji (o WinForms desenha
-  quadradinhos no lugar). Sem tela (SSH, CI) → exit 6, e o agente pergunta no terminal.
+  gráficos do Linux. A janela do Windows mostra os emojis em preto e branco: o
+  WinForms não desenha emoji colorido. Sem tela (SSH, CI) → exit 6, e o agente
+  pergunta no terminal.
 - **Textos da janela em 10 idiomas:** pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja
   (os outros saem em inglês). O agente escreve a chamada e a pergunta no *seu* idioma e
   passa `--lang`.

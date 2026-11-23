@@ -1,6 +1,6 @@
 {
   "name": "popup",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Ask questions through desktop pop-ups instead of the terminal (agents running on your own computer, such as Claude Code). Manual: runs only when you type /popup.",
   "author": {
     "name": "JVMartyns"

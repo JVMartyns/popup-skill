@@ -30,7 +30,8 @@ instead of the terminal, so you can work in another window and still answer.
   | WSL | native Windows window via `powershell.exe` → GTK4 → zenity → kdialog → Tkinter |
 
   On WSL the window opens on Windows itself, so it works without WSLg or Linux GUI
-  packages. The Windows window shows no emoji (WinForms draws them as empty squares). No screen at all (SSH, CI) → exit 6, and the agent asks in the terminal instead.
+  packages. The Windows window shows emoji in black and white: WinForms cannot draw
+  color emoji. No screen at all (SSH, CI) → exit 6, and the agent asks in the terminal instead.
 - **10 languages for the window texts:** pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja
   (others fall back to English). The agent writes the greeting and question in *your*
   language and passes `--lang`.
