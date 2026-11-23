@@ -16,3 +16,14 @@ jobs:
         run: python3 tests/teste.py
       - name: Plugins in sync with skills/popup
         run: python3 scripts/build.py --check
+      - name: README commands run
+        run: |
+          POPUP=skills/popup/popup.py
+          $POPUP --help
+          $POPUP doctor
+          XDG_CONFIG_HOME=$(mktemp -d) $POPUP favorite list --lang pt-BR
+          # no screen in CI: ask must exit 6 so the agent asks in the terminal
+          set +e
+          env -u DISPLAY -u WAYLAND_DISPLAY POPUP_STATE_DIR=$(mktemp -d) $POPUP ask --lang en \
+            --greeting "Hey, got a sec?" --question "Which name?" --option "⚙️|config|Standard name"
+          test $? -eq 6

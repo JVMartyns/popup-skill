@@ -1,1 +1,3 @@
-fake.py
+#!/bin/sh
+# ferramenta falsa para os testes; o registro e as respostas ficam em fake.py
+exec python3 "$(dirname "$0")/fake.py" kdialog "$@"

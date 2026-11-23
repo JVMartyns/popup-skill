@@ -25,12 +25,14 @@ DESC_MANUAL = ("Ask the user the task's questions through desktop pop-up windows
 
 PLUGINS = {
     "popup": {
-        "description": "Ask questions through desktop pop-ups instead of the terminal. "
+        "description": "Ask questions through desktop pop-ups instead of the terminal "
+                       "(agents running on your own computer, such as Claude Code). "
                        "Manual: runs only when you type /popup.",
         "manual": True,
     },
     "popup-auto": {
-        "description": "Ask questions through desktop pop-ups instead of the terminal. "
+        "description": "Ask questions through desktop pop-ups instead of the terminal "
+                       "(agents running on your own computer, such as Claude Code). "
                        "Claude can turn it on by itself when you say you'll be away "
                        "or ask for pop-ups.",
         "manual": False,

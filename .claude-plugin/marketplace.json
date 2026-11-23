@@ -4,7 +4,7 @@
     "name": "JVMartyns"
   },
   "metadata": {
-    "description": "Ask questions through desktop pop-ups instead of the terminal, in 10 languages, on Linux, macOS and Windows."
+    "description": "Ask questions through desktop pop-ups instead of the terminal, in 10 languages, on Linux, macOS and Windows. For agents running on your own computer, such as Claude Code; not for claude.ai in the browser."
   },
   "plugins": [
     {

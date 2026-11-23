@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import json, os, sys
-nome = os.path.basename(sys.argv[0])
+nome = sys.argv.pop(1)  # o script de tests/bin passa o nome da ferramenta
 with open(os.environ["FAKE_LOG"], "a") as f:
     f.write(json.dumps({"prog": nome, "argv": sys.argv[1:]}, ensure_ascii=False) + "\n")
 fila = os.environ["FAKE_RESP"]

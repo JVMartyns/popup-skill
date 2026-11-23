@@ -5,6 +5,10 @@ instead of the terminal, so you can work in another window and still answer.
 
 *Leia em português: [README.pt-BR.md](README.pt-BR.md)*
 
+> **Where it works:** agents that run on your own computer with a screen, such as
+> Claude Code on Linux, macOS or Windows. It does **not** work on claude.ai in the
+> browser or in cloud sandboxes: there is no desktop there to show a window on.
+
 | Quick question (pt-BR, favorite greeting ⭐) | Yes / no (en) | Call to the terminal (ja) |
 |---|---|---|
 | ![](docs/pergunta-pt.png) | ![](docs/simnao-en.png) | ![](docs/terminal-ja.png) |
@@ -38,7 +42,7 @@ instead of the terminal, so you can work in another window and still answer.
 
 ```
 /plugin marketplace add JVMartyns/popup-skill
-/plugin install popup@popup-skill        # manual: runs only when you type /popup
+/plugin install popup@popup-skill        # manual: runs only when you type /popup (full name: /popup:popup)
 # or
 /plugin install popup-auto@popup-skill   # Claude may turn it on when you say you'll be away
 ```
@@ -53,7 +57,7 @@ cp -r popup-skill/skills/popup ~/.claude/skills/
 ```
 
 This copy lets Claude turn it on by itself when it fits. To make it manual-only
-(`/popup`), add to `~/.claude/settings.json`:
+(`/popup`), add to `~/.claude/settings.json` (or the project's `.claude/settings.json`):
 
 ```json
 { "skillOverrides": { "popup": "user-invocable-only" } }
@@ -81,6 +85,9 @@ skills/popup/popup.py doctor
 
 ## Usage (what the agent runs)
 
+You don't type these: the agent does, with the full path that `SKILL.md` gives it.
+To run the script yourself, see [Running the script yourself](#running-the-script-yourself).
+
 ```bash
 popup.py ask      --lang en --timeout 300 \
   --greeting "Hey, got a sec? I'm stuck on a quick choice." \
@@ -107,17 +114,52 @@ is now `yes`/`no` (the exit code is the same).
 
 ## Favorite greetings
 
+The easiest way is to ask the agent: *"save this greeting as a favorite"*, *"show my
+favorites"*. It already knows where the script is. Or click the ⭐ in the GTK window.
+From a shell (see the next section for `$POPUP`):
+
 ```bash
-popup.py favorite list [--lang pt-BR]
-popup.py favorite add --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
-popup.py favorite rm  --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
+$POPUP favorite list [--lang pt-BR]
+$POPUP favorite add --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
+$POPUP favorite rm  --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
 ```
 
-Or click the ⭐ in the GTK window. The file lives outside the skill folder, so updates
+The file lives outside the skill folder, so updates
 never erase it: `~/.config/popup/favorites.txt` (Windows: `%APPDATA%\popup\favorites.txt`;
 override with `POPUP_FAVORITES`). One greeting per line, in sections per language
 (`[pt-BR]`, `[en]`…). Task history: `~/.local/state/popup/historico.json`
 (a task ends after 2 hours without pop-ups in that folder).
+
+## Running the script yourself
+
+The script is not on your `PATH`. Its location depends on how you installed it:
+
+```bash
+# plugin (the folder name changes with the version)
+POPUP=$(ls -d ~/.claude/plugins/cache/popup-skill/*/*/skills/popup | sort -V | tail -1)/popup.py
+# plain skill folder
+POPUP=~/.claude/skills/popup/popup.py
+
+$POPUP doctor     # which interface and language would be used, without a window
+$POPUP --help
+```
+
+## What it runs and writes on your machine
+
+Everything stays on your computer. The skill makes **no network requests** and
+collects no data. See [PRIVACY.md](PRIVACY.md).
+
+- **Runs:** Python 3; one dialog tool from the table above (GTK through PyGObject,
+  `zenity`, `kdialog`, `osascript`, `powershell` or Tkinter); `git branch --show-current`
+  to show the branch in the window title; optionally `canberra-gtk-play` (Linux),
+  `afplay` (macOS) or a system beep (Windows) for the sound. The agent may also run
+  `notify-send` when a question is left unanswered.
+- **Writes:** `~/.config/popup/favorites.txt` (your favorite greetings) and
+  `~/.local/state/popup/historico.json` (greetings shown per working folder, kept for
+  2 hours to enforce the repetition rules). On Windows: `%APPDATA%\popup\` and
+  `%LOCALAPPDATA%\popup\`. On Windows the PowerShell interface also writes a temporary
+  `.ps1` file and deletes it after use.
+- **Reads:** environment variables listed above, the locale, and those two files.
 
 ## Development
 

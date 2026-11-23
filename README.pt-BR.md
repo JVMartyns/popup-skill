@@ -5,6 +5,10 @@ em vez do terminal. Você pode trabalhar em outra janela e responder mesmo assim
 
 *Read in English: [README.md](README.md)*
 
+> **Onde funciona:** agentes que rodam no seu computador, com tela, como o Claude Code
+> no Linux, macOS ou Windows. **Não** funciona no claude.ai pelo navegador nem em
+> ambientes na nuvem: lá não há área de trabalho para mostrar a janela.
+
 | Pergunta rápida (pt-BR, chamada favorita ⭐) | Sim ou não (en) | Chamada ao terminal (ja) |
 |---|---|---|
 | ![](docs/pergunta-pt.png) | ![](docs/simnao-en.png) | ![](docs/terminal-ja.png) |
@@ -38,7 +42,7 @@ em vez do terminal. Você pode trabalhar em outra janela e responder mesmo assim
 
 ```
 /plugin marketplace add JVMartyns/popup-skill
-/plugin install popup@popup-skill        # manual: só roda quando você digita /popup
+/plugin install popup@popup-skill        # manual: só roda quando você digita /popup (nome completo: /popup:popup)
 # ou
 /plugin install popup-auto@popup-skill   # o Claude pode ativar quando você disser que vai sair
 ```
@@ -53,7 +57,7 @@ cp -r popup-skill/skills/popup ~/.claude/skills/
 ```
 
 Essa cópia deixa o Claude ativar a skill sozinho quando fizer sentido. Para ela só
-rodar com `/popup`, acrescente em `~/.claude/settings.json`:
+rodar com `/popup`, acrescente em `~/.claude/settings.json` (ou no `.claude/settings.json` do projeto):
 
 ```json
 { "skillOverrides": { "popup": "user-invocable-only" } }
@@ -81,6 +85,9 @@ skills/popup/popup.py doctor
 
 ## Uso (o que o agente roda)
 
+Você não digita estes comandos: o agente roda, com o caminho completo que o `SKILL.md`
+dá a ele. Para rodar o script você mesmo, veja [Rodando o script você mesmo](#rodando-o-script-você-mesmo).
+
 ```bash
 popup.py ask      --lang pt-BR --timeout 300 \
   --greeting "Opa, tem um minutinho? Empaquei numa escolha." \
@@ -107,18 +114,53 @@ Vindo da 0.1? Os nomes em português (`pergunta`, `simnao`, `--chamada`, `--idio
 
 ## Chamadas favoritas
 
+O jeito mais fácil é pedir ao agente: *"guarda essa chamada nas favoritas"*, *"mostra
+minhas favoritas"*. Ele já sabe onde está o script. Ou clique na ⭐ da janela GTK.
+Pelo terminal (veja `$POPUP` na próxima seção):
+
 ```bash
-popup.py favorite list [--lang pt-BR]
-popup.py favorite add --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
-popup.py favorite rm  --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
+$POPUP favorite list [--lang pt-BR]
+$POPUP favorite add --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
+$POPUP favorite rm  --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
 ```
 
-Ou clique na ⭐ da janela GTK. O arquivo fica fora da pasta da skill, para não ser
+O arquivo fica fora da pasta da skill, para não ser
 apagado nas atualizações: `~/.config/popup/favorites.txt` (Windows:
 `%APPDATA%\popup\favorites.txt`; dá para trocar com `POPUP_FAVORITES`). Uma chamada por
 linha, em seções por idioma (`[pt-BR]`, `[en]`…). Histórico das tarefas:
 `~/.local/state/popup/historico.json` (uma tarefa termina depois de 2 horas sem pop-up
 naquela pasta).
+
+## Rodando o script você mesmo
+
+O script não está no seu `PATH`. O lugar depende de como você instalou:
+
+```bash
+# plugin (o nome da pasta muda com a versão)
+POPUP=$(ls -d ~/.claude/plugins/cache/popup-skill/*/*/skills/popup | sort -V | tail -1)/popup.py
+# pasta de skill
+POPUP=~/.claude/skills/popup/popup.py
+
+$POPUP doctor     # qual interface e idioma seriam usados, sem abrir janela
+$POPUP --help
+```
+
+## O que roda e grava na sua máquina
+
+Tudo fica no seu computador. A skill **não acessa a rede** e não coleta dados. Veja
+[PRIVACY.md](PRIVACY.md).
+
+- **Roda:** Python 3; uma ferramenta de diálogo da tabela acima (GTK pelo PyGObject,
+  `zenity`, `kdialog`, `osascript`, `powershell` ou Tkinter); `git branch --show-current`
+  para mostrar a branch no título da janela; opcionalmente `canberra-gtk-play` (Linux),
+  `afplay` (macOS) ou um bipe do sistema (Windows) para o som. O agente também pode rodar
+  `notify-send` quando uma pergunta fica sem resposta.
+- **Grava:** `~/.config/popup/favorites.txt` (suas chamadas favoritas) e
+  `~/.local/state/popup/historico.json` (chamadas mostradas em cada pasta de trabalho,
+  guardadas por 2 horas para aplicar as regras de repetição). No Windows:
+  `%APPDATA%\popup\` e `%LOCALAPPDATA%\popup\`. No Windows, a interface PowerShell
+  também grava um arquivo `.ps1` temporário e apaga depois de usar.
+- **Lê:** as variáveis de ambiente listadas acima, o idioma do sistema e esses dois arquivos.
 
 ## Desenvolvimento
 
