@@ -146,8 +146,16 @@ def som():
             import winsound
             winsound.MessageBeep()
         else:
-            subprocess.Popen(["canberra-gtk-play", "-i", "message-new-instant"],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # -V 0 forces 100% volume; module-stream-restore can otherwise
+            # reapply a saved low volume and the sound becomes inaudible.
+            for cmd in (["canberra-gtk-play", "-i", "message-new-instant", "-V", "0"],
+                        ["paplay", "/usr/share/sounds/freedesktop/stereo/message-new-instant.oga"]):
+                try:
+                    subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL)
+                    break
+                except OSError:
+                    continue
     except (OSError, ImportError):
         pass
 

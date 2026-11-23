@@ -63,12 +63,20 @@ CSS = """
 """
 
 
+SOUND_FILE = "/usr/share/sounds/freedesktop/stereo/message-new-instant.oga"
+
+
 def tocar_som():
-    try:
-        subprocess.Popen(["canberra-gtk-play", "-i", "message-new-instant"],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except OSError:
-        pass
+    # -V 0 forces the stream to 100% (0 dB); without it module-stream-restore
+    # can reapply a saved low volume and the sound becomes nearly inaudible.
+    for cmd in (["canberra-gtk-play", "-i", "message-new-instant", "-V", "0"],
+                ["paplay", SOUND_FILE]):
+        try:
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+            return
+        except OSError:
+            continue
 
 
 def titulo_janela():
