@@ -78,7 +78,7 @@ def titulo_janela():
     except (OSError, subprocess.SubprocessError):
         br = ""
     pasta = os.path.basename(os.getcwd())
-    agente = os.environ.get("POPUP_AGENTE", T["agente"])
+    agente = tx.env("POPUP_AGENT", "POPUP_AGENTE") or T["agente"]
     return f"✨ {agente} · {pasta}" + (f" · {br}" if br else "")
 
 
@@ -186,7 +186,7 @@ class Popup(Adw.Application):
             else:
                 fav.adicionar(self.codigo_fav, self.a.chamada)
         except (OSError, ValueError) as e:
-            print(f"ui_gtk: não consegui salvar a favorita ({e})", file=sys.stderr)
+            print(f"ui_gtk: could not save the favorite ({e})", file=sys.stderr)
             return
         self.mostrar_favorita(not self.fav_marcada)
 
@@ -266,9 +266,9 @@ class Popup(Adw.Application):
             return b
 
         if self.a.modo == "simnao":
-            sim = botao(f"👍  {T['sim']}", lambda: self.responder("sim", 0), True)
+            sim = botao(f"👍  {T['sim']}", lambda: self.responder("yes", 0), True)
             self.win.set_default_widget(sim)
-            return [botao(f"👎  {T['nao']}", lambda: self.responder("não", 1)), sim]
+            return [botao(f"👎  {T['nao']}", lambda: self.responder("no", 1)), sim]
         if self.a.modo == "terminal":
             ok = botao(f"🏃  {T['ja_vou']}", lambda: self.responder("ok", 0), True)
             self.win.set_default_widget(ok)
@@ -323,7 +323,7 @@ def main():
     if a.modo == "pergunta" and not a.opcao:
         a.sem_outra = False
     if not Gtk.init_check():
-        print("ui_gtk: não consegui abrir a tela", file=sys.stderr)
+        print("ui_gtk: could not open the screen", file=sys.stderr)
         sys.exit(ERRO)
     app = Popup(a)
     app.run([sys.argv[0]])

@@ -1,9 +1,9 @@
 """Textos fixos da janela por idioma, e a escolha do idioma.
 
-Ordem: --idioma → POPUP_IDIOMA → idioma do sistema → inglês.
-Um idioma pedido em --idioma ou POPUP_IDIOMA sem tradução vira inglês (não cai no
+Ordem: --lang → POPUP_LANG → idioma do sistema → inglês.
+Um idioma pedido em --lang ou POPUP_LANG sem tradução vira inglês (não cai no
 sistema): o agente já escreveu a chamada nesse idioma, e inglês combina melhor do que
-o idioma do sistema.
+o idioma do sistema. (--idioma e POPUP_IDIOMA são apelidos antigos.)
 A chamada, a pergunta e as opções não passam por aqui: o agente as escreve.
 """
 import locale
@@ -12,6 +12,15 @@ import subprocess
 import sys
 
 PADRAO = "en"
+
+
+def env(*nomes):
+    """Primeira variável de ambiente definida (nome novo primeiro, apelidos depois)."""
+    for n in nomes:
+        v = os.environ.get(n)
+        if v:
+            return v
+    return None
 
 TEXTOS = {
     "pt": {
@@ -198,15 +207,15 @@ def idioma_sistema():
 
 def resolver(pedido=None):
     """Devolve (idioma, origem)."""
-    for valor, origem in ((pedido, "--idioma"), (os.environ.get("POPUP_IDIOMA"), "POPUP_IDIOMA")):
+    for valor, origem in ((pedido, "--lang"), (env("POPUP_LANG", "POPUP_IDIOMA"), "POPUP_LANG")):
         if valor and valor.strip():
             if normalizar(valor):
                 return normalizar(valor), origem
-            return PADRAO, f"{origem} {valor.strip()} sem tradução → inglês"
+            return PADRAO, f"{origem} {valor.strip()} has no translation → English"
     sistema = idioma_sistema()
     if normalizar(sistema):
-        return normalizar(sistema), f"sistema ({sistema})"
-    return PADRAO, "padrão"
+        return normalizar(sistema), f"system ({sistema})"
+    return PADRAO, "default"
 
 
 def textos(idioma):

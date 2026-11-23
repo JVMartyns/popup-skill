@@ -1,12 +1,13 @@
 """Chamadas favoritas do usuário e histórico de chamadas por tarefa.
 
-favoritas.txt: uma chamada por linha, em seções por idioma ([pt-BR], [en], ...).
-Linhas com # são comentários. Caminho: POPUP_FAVORITAS ou a pasta de configuração do
-usuário (~/.config/popup/favoritas.txt; Windows: %APPDATA%\\popup\\favoritas.txt), fora
-da pasta da skill, para não ser apagado quando a skill é atualizada.
+favorites.txt: uma chamada por linha, em seções por idioma ([pt-BR], [en], ...).
+Linhas com # são comentários. Caminho: POPUP_FAVORITES ou a pasta de configuração do
+usuário (~/.config/popup/favorites.txt; Windows: %APPDATA%\\popup\\favorites.txt), fora
+da pasta da skill, para não ser apagado quando a skill é atualizada. Um favoritas.txt
+da versão 0.1 é renomeado para favorites.txt no primeiro uso.
 
 Histórico: guarda as chamadas já mostradas em cada pasta de trabalho. Uma "tarefa"
-termina depois de 2 horas sem pop-up naquela pasta. Caminho: POPUP_ESTADO ou
+termina depois de 2 horas sem pop-up naquela pasta. Caminho: POPUP_STATE_DIR ou
 ~/.local/state/popup (Windows: %LOCALAPPDATA%\\popup).
 
 Regras (o pop-up é recusado com exit 7):
@@ -18,6 +19,8 @@ import json
 import os
 import sys
 import time
+
+from textos import env
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 FIM_DA_TAREFA = 2 * 60 * 60  # segundos sem pop-up
@@ -70,16 +73,26 @@ def pasta_config():
 
 
 def caminho_favoritas():
-    return os.environ.get("POPUP_FAVORITAS") or os.path.join(pasta_config(), "favoritas.txt")
+    explicito = env("POPUP_FAVORITES", "POPUP_FAVORITAS")
+    if explicito:
+        return explicito
+    novo = os.path.join(pasta_config(), "favorites.txt")
+    antigo = os.path.join(pasta_config(), "favoritas.txt")  # nome da versão 0.1
+    if not os.path.exists(novo) and os.path.exists(antigo):
+        try:
+            os.replace(antigo, novo)
+        except OSError:
+            return antigo
+    return novo
 
 
 def _modelo():
     """Conteúdo inicial do arquivo: o exemplo que vem com a skill, ou só um cabeçalho."""
     try:
-        with open(os.path.join(AQUI, "favoritas.exemplo.txt"), encoding="utf-8") as f:
+        with open(os.path.join(AQUI, "favorites.example.txt"), encoding="utf-8") as f:
             return f.read().splitlines()
     except FileNotFoundError:
-        return ["# Chamadas favoritas: uma por linha, na seção do idioma.", ""]
+        return ["# Favorite greetings: one per line, in the section of the language.", ""]
 
 
 def ler():
@@ -186,8 +199,8 @@ def remover(codigo, chamada):
 # ---------------------------------------------------------------- histórico
 
 def caminho_estado():
-    if os.environ.get("POPUP_ESTADO"):
-        pasta = os.environ["POPUP_ESTADO"]
+    if env("POPUP_STATE_DIR", "POPUP_ESTADO"):
+        pasta = env("POPUP_STATE_DIR", "POPUP_ESTADO")
     elif sys.platform == "win32":
         pasta = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "popup")
     else:
@@ -218,13 +231,13 @@ def checar(chamada, codigo, pasta=None):
     itens = historico(pasta)
     alvo = normal(chamada)
     if any(normal(i["chamada"]) == alvo for i in itens):
-        return "esta chamada já foi usada nesta tarefa"
+        return "this greeting was already used in this task"
     s = secao_de(chamada)
     if s:
         if s not in secoes_validas(codigo):
-            return f"esta chamada é favorita do idioma {s}, não do idioma desta conversa"
+            return f"this greeting is a favorite for {s}, not for the language of this conversation"
         if itens and itens[-1].get("favorita"):
-            return "o pop-up anterior já usou uma favorita; agora a chamada precisa ser nova"
+            return "the previous pop-up already used a favorite; this greeting must be a new one"
     return None
 
 

@@ -27,7 +27,7 @@ em vez do terminal. Você pode trabalhar em outra janela e responder mesmo assim
   Sem tela (SSH, CI) → exit 6, e o agente pergunta no terminal.
 - **Textos da janela em 10 idiomas:** pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja
   (os outros saem em inglês). O agente escreve a chamada e a pergunta no *seu* idioma e
-  passa `--idioma`.
+  passa `--lang`.
 - **Chamadas favoritas.** Guarde as que você gosta num arquivo ou com a ⭐ da janela. O
   script aplica as regras: nenhuma chamada repetida na tarefa, nunca duas favoritas
   seguidas, favorita só no idioma dela.
@@ -63,7 +63,7 @@ rodar com `/popup`, acrescente em `~/.claude/settings.json`:
 
 Copie `skills/popup/` para a pasta de skills do agente (veja a documentação dele). Se
 ele não carregar skills, cole o `SKILL.md` nas instruções dele (`AGENTS.md`,
-`GEMINI.md`…) e troque `SKILL_DIR` pelo caminho absoluto da pasta. Defina `POPUP_AGENTE`
+`GEMINI.md`…) e troque `SKILL_DIR` pelo caminho absoluto da pasta. Defina `POPUP_AGENT`
 com o nome do agente para ele aparecer no título da janela.
 
 ## Requisitos
@@ -76,39 +76,46 @@ Opcionais: `notify-send`, `canberra-gtk-play` (som).
 Para ver o que seria usado, sem abrir janela:
 
 ```bash
-skills/popup/popup.py diagnostico
+skills/popup/popup.py doctor
 ```
 
 ## Uso (o que o agente roda)
 
 ```bash
-popup.py pergunta --idioma pt-BR --timeout 300 \
-  --chamada "Opa, tem um minutinho? Empaquei numa escolha." \
-  --pergunta "Qual nome dou para a pasta cfg/?" \
-  --opcao "⚙️|config|Nome padrão" --opcao "🛠️|settings|Estilo Django"
+popup.py ask      --lang pt-BR --timeout 300 \
+  --greeting "Opa, tem um minutinho? Empaquei numa escolha." \
+  --question "Qual nome dou para a pasta cfg/?" \
+  --option "⚙️|config|Nome padrão" --option "🛠️|settings|Estilo Django"
 
-popup.py simnao   --idioma pt-BR --chamada "..." --pergunta "Apago os 4 testes antigos?"
-popup.py terminal --idioma pt-BR --chamada "..." --pergunta "Preciso de você no terminal: ..."
+popup.py yesno    --lang pt-BR --greeting "..." --question "Apago os 4 testes antigos?"
+popup.py terminal --lang pt-BR --greeting "..." --question "Preciso de você no terminal: ..."
 ```
 
-A resposta sai no stdout. Exit: `0` respondeu, `1` fechou / "Agora não" / "Não",
+A resposta sai no stdout (`yesno` imprime `yes`/`no`, `terminal` imprime `ok`). Exit: `0` respondeu, `1` fechou / "Agora não" / "Não",
 `5` timeout, `6` sem tela ou sem interface (pergunte no terminal), `7` chamada recusada
 (repetida ou regra de favorita): escreva outra e rode de novo.
 
-Opções: `--idioma CÓDIGO`, `--backend gtk,zenity,…` (ou `POPUP_BACKEND`),
-`--timeout S`, `--contexto TEXTO`, `--sem-outra` (sem campo para escrever).
+Opções: `--lang CÓDIGO`, `--backend gtk,zenity,…` (ou `POPUP_BACKEND`),
+`--timeout S`, `--context TEXTO`, `--no-other` (sem campo para escrever).
+
+`popup.py --help` mostra todas as opções.
+
+Vindo da 0.1? Os nomes em português (`pergunta`, `simnao`, `--chamada`, `--idioma`,
+`POPUP_IDIOMA`…) continuam funcionando como apelidos escondidos, e
+`~/.config/popup/favoritas.txt` vira `favorites.txt` no primeiro uso. Só a saída do
+`yesno` mudou: `sim`/`não` agora é `yes`/`no` (o exit code é o mesmo).
 
 ## Chamadas favoritas
 
 ```bash
-popup.py favorita list [--idioma pt-BR]
-popup.py favorita add --idioma pt-BR "Chefia, me ajuda numa decisão rapidinha?"
-popup.py favorita rm  --idioma pt-BR "Chefia, me ajuda numa decisão rapidinha?"
+popup.py favorite list [--lang pt-BR]
+popup.py favorite add --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
+popup.py favorite rm  --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
 ```
 
 Ou clique na ⭐ da janela GTK. O arquivo fica fora da pasta da skill, para não ser
-apagado nas atualizações: `~/.config/popup/favoritas.txt` (Windows:
-`%APPDATA%\popup\favoritas.txt`; dá para trocar com `POPUP_FAVORITAS`). Uma chamada por
+apagado nas atualizações: `~/.config/popup/favorites.txt` (Windows:
+`%APPDATA%\popup\favorites.txt`; dá para trocar com `POPUP_FAVORITES`). Uma chamada por
 linha, em seções por idioma (`[pt-BR]`, `[en]`…). Histórico das tarefas:
 `~/.local/state/popup/historico.json` (uma tarefa termina depois de 2 horas sem pop-up
 naquela pasta).
@@ -119,7 +126,7 @@ naquela pasta).
 
 ```bash
 python3 scripts/build.py          # gera plugins/popup e plugins/popup-auto
-python3 tests/teste.py            # 63 testes, sem janela (zenity/kdialog falsos)
+python3 tests/teste.py            # 69 testes, sem janela (zenity/kdialog falsos)
 ```
 
 O CI roda os dois (`scripts/build.py --check` falha se `plugins/` estiver desatualizado).

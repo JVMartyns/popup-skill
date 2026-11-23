@@ -29,13 +29,13 @@ Nos comandos abaixo, `SKILL_DIR` é a pasta onde este `SKILL.md` está
 (no Claude Code: `${CLAUDE_SKILL_DIR}`).
 Substitua pelo caminho absoluto antes de rodar.
 
-Defina `POPUP_AGENTE` com o nome do agente (ex.: `Codex`, `Gemini CLI`) para ele
+Defina `POPUP_AGENT` com o nome do agente (ex.: `Codex`, `Gemini CLI`) para ele
 aparecer no título da janela. Sem a variável, o título mostra "Agente".
 
 Para ver qual interface e qual idioma seriam usados, sem abrir janela:
 
 ```bash
-SKILL_DIR/popup.py diagnostico
+SKILL_DIR/popup.py doctor
 ```
 
 Para forçar uma interface (ou uma ordem), use `--backend` ou `POPUP_BACKEND`:
@@ -53,7 +53,7 @@ Brasil: se ele escreve "ficheiro", "base de dados", "ecrã", "consegues", escrev
 também, sem gírias brasileiras. O mesmo vale para espanhol da Espanha e da América
 Latina, inglês britânico e americano etc.
 
-Passe o idioma em `--idioma` em **todo** pop-up, com o código do idioma da conversa:
+Passe o idioma em `--lang` em **todo** pop-up, com o código do idioma da conversa:
 `pt-BR`, `pt-PT`, `en`, `es`, `fr`, `de`, `it`, `ru`, `zh`, `ja` ou outro código
 ISO 639-1 (ex.: `ko`, `ar`). Os botões e o contador saem nesse idioma. Se ele não
 tiver tradução no script, os botões saem em inglês; os seus textos continuam no
@@ -74,7 +74,7 @@ contexto e nas opções:
 
 Exemplo em espanhol: "¿Hago el merge de la branch feature/login en main?"
 
-A saída não muda com o idioma: `simnao` sempre imprime `sim`/`não` e `terminal`
+A saída não muda com o idioma: `yesno` sempre imprime `yes`/`no` e `terminal`
 imprime `ok`. Decida pelo exit code.
 
 ## Quando perguntar por pop-up
@@ -121,7 +121,7 @@ dela. Não traduza nem adapte chamadas de outro idioma: "meu consagrado" vira
 
 O usuário guarda chamadas de que gosta num arquivo de favoritas, uma por linha, em
 seções por idioma (`[pt-BR]`, `[pt-PT]`, `[en]`…). Para ver as do idioma da conversa:
-`SKILL_DIR/popup.py favorita list --idioma <código>`. Você pode usar uma favorita
+`SKILL_DIR/popup.py favorite list --lang <código>`. Você pode usar uma favorita
 exatamente como está, desde que seja da seção do idioma desta conversa. Nunca
 traduza nem adapte favoritas de outra seção.
 
@@ -137,9 +137,9 @@ rode o comando de novo.
 Se o usuário pedir para guardar, tirar ou ver favoritas:
 
 ```bash
-SKILL_DIR/popup.py favorita add --idioma <código> "<chamada>"
-SKILL_DIR/popup.py favorita rm  --idioma <código> "<chamada>"
-SKILL_DIR/popup.py favorita list [--idioma <código>]
+SKILL_DIR/popup.py favorite add --lang <código> "<chamada>"
+SKILL_DIR/popup.py favorite rm  --lang <código> "<chamada>"
+SKILL_DIR/popup.py favorite list [--lang <código>]
 ```
 
 Na janela GTK, a ⭐ no canto guarda a chamada que está aparecendo; clicar de novo tira.
@@ -153,7 +153,7 @@ para o momento.
 - English: "Hey there, sorry to bug you, but I could use a hand with something. Got a sec?"
 - Español: "Oye, perdona la molestia, ¿me echas una mano con una duda?"
 
-Passe a chamada em `--chamada` nos comandos abaixo e use-a também no
+Passe a chamada em `--greeting` nos comandos abaixo e use-a também no
 `notify-send` de pergunta pendente.
 
 ## A janela
@@ -172,34 +172,34 @@ limite de tempo, use um limite maior que o `--timeout` do script (ex.: 500 s par
 
 ### Pergunta direta: cartões + resposta escrita
 
-Cada `--opcao` é `"emoji|título|descrição"`. Escolha um emoji que combine com a opção e
+Cada `--option` é `"emoji|título|descrição"`. Escolha um emoji que combine com a opção e
 escreva uma descrição curta do que acontece se ela for escolhida. O usuário clica no
 cartão, aperta o número (1-9) ou escreve a própria resposta no campo embutido.
 
 ```bash
-SKILL_DIR/popup.py pergunta --timeout 300 --idioma <código do idioma da conversa> \
-  --chamada "<chamada escrita agora para este pop-up>" \
-  --pergunta "<pergunta, com o contexto mínimo para decidir>" \
-  --contexto "<opcional: uma linha de apoio, em cinza>" \
-  --opcao "🧩|<opção 1>|<o que acontece>" \
-  --opcao "🚀|<opção 2>|<o que acontece>"
+SKILL_DIR/popup.py ask --timeout 300 --lang <código do idioma da conversa> \
+  --greeting "<chamada escrita agora para este pop-up>" \
+  --question "<pergunta, com o contexto mínimo para decidir>" \
+  --context "<opcional: uma linha de apoio, em cinza>" \
+  --option "🧩|<opção 1>|<o que acontece>" \
+  --option "🚀|<opção 2>|<o que acontece>"
 echo "exit=$?"
 ```
 
 ### Sim ou não
 
 ```bash
-SKILL_DIR/popup.py simnao --timeout 300 --idioma <código do idioma da conversa> \
-  --chamada "<chamada>" --pergunta "<pergunta de sim ou não>"
-echo "exit=$?"   # 0 = Sim, 1 = Não
+SKILL_DIR/popup.py yesno --timeout 300 --lang <código do idioma da conversa> \
+  --greeting "<chamada>" --question "<pergunta de sim ou não>"
+echo "exit=$?"   # 0 = yes, 1 = no
 ```
 
 ### Chamada ao terminal
 
 ```bash
-SKILL_DIR/popup.py terminal --timeout 300 --idioma <código do idioma da conversa> \
-  --chamada "<chamada>" \
-  --pergunta "<pedido, no idioma do usuário, para ele ir ao terminal>: <resumo de uma linha da dúvida>"
+SKILL_DIR/popup.py terminal --timeout 300 --lang <código do idioma da conversa> \
+  --greeting "<chamada>" \
+  --question "<pedido, no idioma do usuário, para ele ir ao terminal>: <resumo de uma linha da dúvida>"
 ```
 
 Depois disso, espere a resposta no terminal normalmente.
@@ -212,5 +212,5 @@ Em Linux com `notify-send`, avise também:
 
 ```bash
 notify-send --urgency=critical --icon="SKILL_DIR/assets/mascote.svg" \
-  "${POPUP_AGENTE:-Agente}" "<chamada> Pergunta pendente no terminal."
+  "${POPUP_AGENT:-Agente}" "<chamada> Pergunta pendente no terminal."
 ```

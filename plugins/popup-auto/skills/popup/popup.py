@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
-"""Pop-up de pergunta ao usuário, com a interface escolhida na hora.
+"""Ask the user through a desktop pop-up, with the interface chosen at run time.
 
-Uso:
-  popup.py pergunta --chamada TXT --pergunta TXT [--contexto TXT] \
-           [--opcao "emoji|título|descrição"]... [--sem-outra] [--timeout S]
-  popup.py simnao   --chamada TXT --pergunta TXT [--contexto TXT] [--timeout S]
-  popup.py terminal --chamada TXT --pergunta TXT [--timeout S]
-  popup.py diagnostico          mostra o ambiente e a interface que seria usada
-  popup.py favorita list [--idioma X]
-  popup.py favorita add --idioma X "chamada"
-  popup.py favorita rm  --idioma X "chamada"
+Usage:
+  popup.py ask      --greeting TXT --question TXT [--context TXT] \
+                    [--option "emoji|title|description"]... [--no-other] [--timeout S]
+  popup.py yesno    --greeting TXT --question TXT [--context TXT] [--timeout S]
+  popup.py terminal --greeting TXT --question TXT [--timeout S]
+  popup.py doctor                         show the environment and the interface that would be used
+  popup.py favorite list [--lang X]
+  popup.py favorite add --lang X "greeting"
+  popup.py favorite rm  --lang X "greeting"
 
-  --idioma CÓDIGO               idioma dos botões (pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja);
-                                use o mesmo em que escreveu a chamada. Sem tradução → inglês.
-                                Sem --idioma: POPUP_IDIOMA, depois o idioma do sistema, senão inglês.
-  --backend NOME[,NOME...]      força a interface (ou use POPUP_BACKEND)
-                                nomes: gtk, zenity, kdialog, osascript, powershell, tkinter
+  --lang CODE        language of the window texts (pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja);
+                     use the one you wrote the greeting in. No translation → English.
+                     Without --lang: POPUP_LANG, then the system language, then English.
+  --backend NAME[,NAME...]  force the interface (or POPUP_BACKEND):
+                     gtk, zenity, kdialog, osascript, powershell, tkinter
 
-Saída: a resposta em stdout.
-Exit: 0 = respondeu, 1 = fechou/"Agora não"/"Não" (simnao), 5 = timeout,
-      6 = sem tela ou sem nenhuma interface disponível (pergunte no terminal),
-      7 = chamada recusada (repetida, favorita seguida ou favorita de outro idioma):
-          escreva outra chamada e rode de novo. O motivo vai para stderr.
+Output: the answer on stdout (yesno: "yes"/"no"; terminal: "ok").
+Exit: 0 = answered, 1 = closed / "Not now" / "No" (yesno), 5 = timeout,
+      6 = no screen or no interface available (ask in the terminal),
+      7 = greeting refused (repeated, favorite after favorite, or favorite of another
+          language): write another greeting and run again. The reason goes to stderr.
+
+Portuguese names from version 0.1 still work as aliases: pergunta, simnao, diagnostico,
+favorita, --chamada, --pergunta, --contexto, --opcao, --sem-outra, --idioma.
 """
 import argparse
 import html
@@ -68,7 +71,7 @@ def titulo_janela():
     except (OSError, subprocess.SubprocessError):
         br = ""
     pasta = os.path.basename(os.getcwd())
-    agente = os.environ.get("POPUP_AGENTE", T["agente"])
+    agente = tx.env("POPUP_AGENT", "POPUP_AGENTE") or T["agente"]
     return f"✨ {agente} · {pasta}" + (f" · {br}" if br else "")
 
 
@@ -202,20 +205,20 @@ def ordem(forcado):
         nomes = [n.strip().lower() for n in forcado.split(",") if n.strip()]
         desconhecidos = [n for n in nomes if n not in DISPONIVEL]
         if desconhecidos:
-            aviso(f"interface desconhecida: {', '.join(desconhecidos)}")
+            aviso(f"unknown interface: {', '.join(desconhecidos)}")
         return [n for n in nomes if n in DISPONIVEL]
     return ordem_padrao()
 
 
 def diagnostico(forcado, idioma, origem):
-    print(f"sistema: {sys.platform}")
-    print(f"idioma: {idioma} (de {origem})")
+    print(f"system: {sys.platform}")
+    print(f"language: {idioma} (from {origem})")
     if LINUX:
-        print(f"sessão: {os.environ.get('XDG_SESSION_TYPE', '?')} · desktop: {desktop() or '?'}")
-        print(f"tela: WAYLAND_DISPLAY={os.environ.get('WAYLAND_DISPLAY', '')} "
+        print(f"session: {os.environ.get('XDG_SESSION_TYPE', '?')} · desktop: {desktop() or '?'}")
+        print(f"screen: WAYLAND_DISPLAY={os.environ.get('WAYLAND_DISPLAY', '')} "
               f"DISPLAY={os.environ.get('DISPLAY', '')}")
     lista = ordem(forcado)
-    print(f"ordem{' (forçada)' if forcado else ''}: {', '.join(lista)}")
+    print(f"order{' (forced)' if forcado else ''}: {', '.join(lista)}")
     escolhido = None
     for nome in lista:
         ok = DISPONIVEL[nome]()
@@ -224,9 +227,9 @@ def diagnostico(forcado, idioma, origem):
         if ok and escolhido is None:
             escolhido = nome
     if not tem_tela():
-        print("escolhido: nenhum — sem tela (exit 6)")
+        print("chosen: none — no screen (exit 6)")
     else:
-        print(f"escolhido: {escolhido or 'nenhum (exit 6)'}")
+        print(f"chosen: {escolhido or 'none (exit 6)'}")
 
 
 # ---------------------------------------------------------------- interfaces
@@ -240,7 +243,7 @@ def ui_gtk(a):
         cmd.append("--sem-outra")
     cod, out, err = rodar(cmd, a.timeout + 10)
     if cod not in (OK, NAO, TIMEOUT):
-        raise Indisponivel(f"saiu com {cod}: {err.strip().splitlines()[-1:] or ''}")
+        raise Indisponivel(f"exited with {cod}: {err.strip().splitlines()[-1:] or ''}")
     return out or None, cod
 
 
@@ -253,14 +256,14 @@ def ui_zenity(a):
                "--width=580", *args]
         cod, out, err = rodar(cmd, prazo.resta())
         if cod not in (OK, NAO, TIMEOUT) or falhou_tela(cod, err):
-            raise Indisponivel(f"zenity saiu com {cod}: {err.strip()}")
+            raise Indisponivel(f"zenity exited with {cod}: {err.strip()}")
         return cod, out
 
     t = html.escape(texto(a), quote=False)
     if a.modo == "simnao":
         cod, _ = zenity("--question", f"--text={t}", f"--ok-label=👍 {T['sim']}",
                         f"--cancel-label=👎 {T['nao']}")
-        return {OK: "sim", NAO: "não"}.get(cod), cod
+        return {OK: "yes", NAO: "no"}.get(cod), cod
     if a.modo == "terminal":
         cod, _ = zenity("--info", f"--text={t}", f"--ok-label=🏃 {T['ja_vou']}")
         return ("ok" if cod == OK else None), cod
@@ -292,13 +295,13 @@ def ui_kdialog(a):
         cmd = ["kdialog", "--title", titulo_janela(), *args]
         cod, out, err = rodar(cmd, max(1, prazo.resta()))
         if cod not in (OK, NAO, TIMEOUT) or falhou_tela(cod, err):
-            raise Indisponivel(f"kdialog saiu com {cod}: {err.strip()}")
+            raise Indisponivel(f"kdialog exited with {cod}: {err.strip()}")
         return cod, out
 
     t = texto(a)
     if a.modo == "simnao":
         cod, _ = kdialog("--yes-label", f"👍 {T['sim']}", "--no-label", f"👎 {T['nao']}", "--yesno", t)
-        return {OK: "sim", NAO: "não"}.get(cod), cod
+        return {OK: "yes", NAO: "no"}.get(cod), cod
     if a.modo == "terminal":
         cod, _ = kdialog("--ok-label", f"🏃 {T['ja_vou']}", "--msgbox", t)
         return ("ok" if cod == OK else None), cod
@@ -364,13 +367,13 @@ def ui_osascript(a):
         if cod != OK:
             if "-128" in err:
                 return NAO, ""
-            raise Indisponivel(f"osascript saiu com {cod}: {err.strip()}")
+            raise Indisponivel(f"osascript exited with {cod}: {err.strip()}")
         return OK, out
 
     t, ttl = texto(a), titulo_janela()
     if a.modo == "simnao":
         cod, _ = osa(AS_DIALOGO, t, ttl, str(prazo.resta()), "simnao", T["nao"], T["sim"])
-        return {OK: "sim", NAO: "não"}.get(cod), cod
+        return {OK: "yes", NAO: "no"}.get(cod), cod
     if a.modo == "terminal":
         cod, _ = osa(AS_DIALOGO, t, ttl, str(prazo.resta()), "terminal", T["ja_vou"], "")
         return ("ok" if cod == OK else None), cod
@@ -451,7 +454,7 @@ $cont = New-Object Windows.Forms.Label; $cont.AutoSize = $true; $cont.ForeColor 
 $cont.Margin = New-Object Windows.Forms.Padding(0, 8, 12, 0)
 $rodape.Controls.Add($cont)
 switch ($d.modo) {
-  'simnao'   { [void](Botao $rodape $d.t.nao 'não' 1 $false); $f.AcceptButton = (Botao $rodape $d.t.sim 'sim' 0 $false) }
+  'simnao'   { [void](Botao $rodape $d.t.nao 'no' 1 $false); $f.AcceptButton = (Botao $rodape $d.t.sim 'yes' 0 $false) }
   'terminal' { $f.AcceptButton = (Botao $rodape $d.t.ja_vou 'ok' 0 $false) }
   default    { [void](Botao $rodape $d.t.agora_nao $null 1 $false) }
 }
@@ -504,7 +507,7 @@ def ui_powershell(a):
     finally:
         os.unlink(caminho)
     if cod not in (OK, NAO, TIMEOUT):
-        raise Indisponivel(f"powershell saiu com {cod}: {err.strip()}")
+        raise Indisponivel(f"powershell exited with {cod}: {err.strip()}")
     return out or None, cod
 
 
@@ -584,10 +587,10 @@ def ui_tkinter(a):
     contador = tk.Label(rodape, font=f_menor, fg="gray50")
     contador.pack(side="left")
     if a.modo == "simnao":
-        sim = tk.Button(rodape, text=T["sim"], default="active", command=lambda: fim("sim", OK))
+        sim = tk.Button(rodape, text=T["sim"], default="active", command=lambda: fim("yes", OK))
         sim.pack(side="right")
-        tk.Button(rodape, text=T["nao"], command=lambda: fim("não", NAO)).pack(side="right", padx=6)
-        root.bind("<Return>", lambda _e: fim("sim", OK))
+        tk.Button(rodape, text=T["nao"], command=lambda: fim("no", NAO)).pack(side="right", padx=6)
+        root.bind("<Return>", lambda _e: fim("yes", OK))
     elif a.modo == "terminal":
         tk.Button(rodape, text=T["ja_vou"], default="active",
                   command=lambda: fim("ok", OK)).pack(side="right")
@@ -642,33 +645,53 @@ def cmd_favorita(p, a):
                 print(f"  {c}")
         return
     if acao not in ("add", "rm"):
-        p.error("use: favorita list | add --idioma X \"chamada\" | rm --idioma X \"chamada\"")
+        p.error('use: favorite list | add --lang X "greeting" | rm --lang X "greeting"')
     if not a.idioma_bruto or not texto:
-        p.error(f"favorita {acao} precisa de --idioma e do texto da chamada")
+        p.error(f"favorite {acao} needs --lang and the greeting text")
     s = fav.secao_para_gravar(a.idioma_bruto)
     if acao == "add":
         ok = fav.adicionar(a.idioma_bruto, texto)
-        print(f"{'adicionada' if ok else 'já estava'} em [{s}]")
+        print(f"{'added to' if ok else 'already in'} [{s}]")
     else:
         ok = fav.remover(a.idioma_bruto, texto)
-        print(f"{'removida de' if ok else 'não estava em'} [{s}]")
+        print(f"{'removed from' if ok else 'not in'} [{s}]")
         if not ok:
             sys.exit(1)
 
 
+MODOS = {  # nome público → nome interno
+    "ask": "pergunta", "yesno": "simnao", "terminal": "terminal",
+    "doctor": "diagnostico", "favorite": "favorita",
+    # apelidos em português da versão 0.1
+    "pergunta": "pergunta", "simnao": "simnao", "diagnostico": "diagnostico", "favorita": "favorita",
+}
+
+
 def main():
-    p = argparse.ArgumentParser(description="Pop-up de pergunta ao usuário.")
-    p.add_argument("modo", choices=["pergunta", "simnao", "terminal", "diagnostico", "favorita"])
-    p.add_argument("extra", nargs="*", help="favorita: list | add TEXTO | rm TEXTO")
-    p.add_argument("--chamada")
-    p.add_argument("--pergunta")
-    p.add_argument("--contexto", default="")
-    p.add_argument("--opcao", action="append", default=[])
-    p.add_argument("--sem-outra", action="store_true")
-    p.add_argument("--timeout", type=int, default=300)
-    p.add_argument("--idioma", default="")
-    p.add_argument("--backend", default=os.environ.get("POPUP_BACKEND", ""))
-    a = p.parse_intermixed_args()  # aceita "favorita add --idioma ja TEXTO"
+    p = argparse.ArgumentParser(prog="popup.py", description="Ask the user through a desktop pop-up.")
+    p.add_argument("modo", choices=list(MODOS), metavar="{ask,yesno,terminal,doctor,favorite}")
+    p.add_argument("extra", nargs="*", help="favorite: list | add TEXT | rm TEXT")
+
+    def opcao(novo, antigo, dest, **kw):
+        if kw.get("action") != "store_true":
+            kw.setdefault("metavar", "CODE" if novo == "--lang" else "TEXT")
+        p.add_argument(novo, dest=dest, **kw)
+        kw.pop("help", None)
+        kw["default"] = argparse.SUPPRESS
+        p.add_argument(antigo, dest=dest, help=argparse.SUPPRESS, **kw)
+
+    opcao("--greeting", "--chamada", "chamada", help="friendly opening line (agent-written)")
+    opcao("--question", "--pergunta", "pergunta", help="the question itself")
+    opcao("--context", "--contexto", "contexto", default="", help="optional supporting line")
+    opcao("--option", "--opcao", "opcao", action="append", default=[], help='"emoji|title|description"')
+    opcao("--no-other", "--sem-outra", "sem_outra", action="store_true", default=False,
+          help="ask: no free-text field")
+    opcao("--lang", "--idioma", "idioma", default="", help="language code of the conversation")
+    p.add_argument("--timeout", type=int, default=300, metavar="S", help="seconds (default 300)")
+    p.add_argument("--backend", default=os.environ.get("POPUP_BACKEND", ""), metavar="NAMES",
+                   help="force interface(s): gtk,zenity,kdialog,osascript,powershell,tkinter")
+    a = p.parse_intermixed_args()  # aceita "favorite add --lang ja TEXTO"
+    a.modo = MODOS[a.modo]
 
     global T
     a.idioma_bruto = a.idioma.strip()
@@ -677,9 +700,9 @@ def main():
         cmd_favorita(p, a)
         return
     if a.extra:
-        p.error(f"argumentos inesperados: {' '.join(a.extra)}")
+        p.error(f"unexpected arguments: {' '.join(a.extra)}")
     if a.idioma and not tx.normalizar(a.idioma):
-        aviso(f"idioma '{a.idioma}' sem tradução nos botões; usando inglês")
+        aviso(f"no window texts for language '{a.idioma}'; using English")
     a.idioma, origem = tx.resolver(a.idioma)
     a.idioma_fav = a.idioma_bruto or a.idioma  # seção de favoritas; 'ko' fica 'ko', não 'en'
     T = tx.textos(a.idioma)
@@ -688,17 +711,17 @@ def main():
         diagnostico(a.backend, a.idioma, origem)
         return
     if not a.chamada or not a.pergunta:
-        p.error("--chamada e --pergunta são obrigatórios")
+        p.error("--greeting and --question are required")
     if a.modo == "pergunta" and not a.opcao:
         a.sem_outra = False
 
     motivo = fav.checar(a.chamada, a.idioma_fav)
     if motivo:
-        aviso(f"chamada recusada: {motivo}. Escreva outra chamada e rode de novo.")
+        aviso(f"greeting refused: {motivo}. Write another greeting and run again.")
         sys.exit(RECUSADA)
 
     if not tem_tela():
-        aviso("sem tela (WAYLAND_DISPLAY e DISPLAY vazios); pergunte no terminal")
+        aviso("no screen (WAYLAND_DISPLAY and DISPLAY are empty); ask in the terminal")
         sys.exit(SEM_UI)
 
     for nome in ordem(a.backend):
@@ -707,17 +730,17 @@ def main():
         try:
             resposta, codigo = UIS[nome](a)
         except Indisponivel as e:
-            aviso(f"{nome} falhou ({e}); tentando a próxima interface")
+            aviso(f"{nome} failed ({e}); trying the next interface")
             continue
         if resposta:
             print(resposta)
         try:
             fav.registrar(a.chamada)
         except OSError as e:
-            aviso(f"não consegui gravar o histórico ({e})")
+            aviso(f"could not save the history ({e})")
         sys.exit(codigo)
 
-    aviso("nenhuma interface gráfica disponível; pergunte no terminal")
+    aviso("no graphical interface available; ask in the terminal")
     sys.exit(SEM_UI)
 
 

@@ -27,7 +27,7 @@ instead of the terminal, so you can work in another window and still answer.
   No screen at all (SSH, CI) → exit 6, and the agent asks in the terminal instead.
 - **10 languages for the window texts:** pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja
   (others fall back to English). The agent writes the greeting and question in *your*
-  language and passes `--idioma`.
+  language and passes `--lang`.
 - **Favorite greetings.** Keep the ones you like in a file, add them with the ⭐ in the
   window, and the script enforces the rules: no greeting repeated in a task, never two
   favorites in a row, favorites only in their own language.
@@ -63,7 +63,7 @@ This copy lets Claude turn it on by itself when it fits. To make it manual-only
 
 Copy `skills/popup/` into the agent's skills folder (see its docs). If the agent does
 not load skills, paste `SKILL.md` into its instructions file (`AGENTS.md`, `GEMINI.md`…)
-and replace `SKILL_DIR` with the absolute path of the folder. Set `POPUP_AGENTE` to the
+and replace `SKILL_DIR` with the absolute path of the folder. Set `POPUP_AGENT` to the
 agent's name to show it in the window title.
 
 ## Requirements
@@ -76,39 +76,46 @@ macOS and Windows use built-in `osascript` / PowerShell. Optional: `notify-send`
 Check what would be used, without opening a window:
 
 ```bash
-skills/popup/popup.py diagnostico
+skills/popup/popup.py doctor
 ```
 
 ## Usage (what the agent runs)
 
 ```bash
-popup.py pergunta --idioma en --timeout 300 \
-  --chamada "Hey, got a sec? I'm stuck on a quick choice." \
-  --pergunta "Which name should the cfg/ folder get?" \
-  --opcao "⚙️|config|Standard name" --opcao "🛠️|settings|Django style"
+popup.py ask      --lang en --timeout 300 \
+  --greeting "Hey, got a sec? I'm stuck on a quick choice." \
+  --question "Which name should the cfg/ folder get?" \
+  --option "⚙️|config|Standard name" --option "🛠️|settings|Django style"
 
-popup.py simnao   --idioma en --chamada "..." --pergunta "Delete the 4 legacy test files?"
-popup.py terminal --idioma en --chamada "..." --pergunta "Please come to the terminal: ..."
+popup.py yesno    --lang en --greeting "..." --question "Delete the 4 legacy test files?"
+popup.py terminal --lang en --greeting "..." --question "Please come to the terminal: ..."
 ```
 
-The answer goes to stdout. Exit codes: `0` answered, `1` closed / "Not now" / "No",
+The answer goes to stdout (`yesno` prints `yes`/`no`, `terminal` prints `ok`). Exit codes: `0` answered, `1` closed / "Not now" / "No",
 `5` timeout, `6` no screen or no interface (ask in the terminal), `7` greeting refused
 (repeated or favorite rule): write another one and run again.
 
-Options: `--idioma CODE`, `--backend gtk,zenity,…` (or `POPUP_BACKEND`), `--timeout S`,
-`--contexto TEXT`, `--sem-outra` (no free-text field).
+Options: `--lang CODE`, `--backend gtk,zenity,…` (or `POPUP_BACKEND`), `--timeout S`,
+`--context TEXT`, `--no-other` (no free-text field).
+
+Run `popup.py --help` for all options.
+
+Coming from 0.1? The Portuguese names (`pergunta`, `simnao`, `--chamada`, `--idioma`,
+`POPUP_IDIOMA`…) still work as hidden aliases, and `~/.config/popup/favoritas.txt` is
+renamed to `favorites.txt` on first use. Only the `yesno` output changed: `sim`/`não`
+is now `yes`/`no` (the exit code is the same).
 
 ## Favorite greetings
 
 ```bash
-popup.py favorita list [--idioma pt-BR]
-popup.py favorita add --idioma pt-BR "Chefia, me ajuda numa decisão rapidinha?"
-popup.py favorita rm  --idioma pt-BR "Chefia, me ajuda numa decisão rapidinha?"
+popup.py favorite list [--lang pt-BR]
+popup.py favorite add --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
+popup.py favorite rm  --lang pt-BR "Chefia, me ajuda numa decisão rapidinha?"
 ```
 
 Or click the ⭐ in the GTK window. The file lives outside the skill folder, so updates
-never erase it: `~/.config/popup/favoritas.txt` (Windows: `%APPDATA%\popup\favoritas.txt`;
-override with `POPUP_FAVORITAS`). One greeting per line, in sections per language
+never erase it: `~/.config/popup/favorites.txt` (Windows: `%APPDATA%\popup\favorites.txt`;
+override with `POPUP_FAVORITES`). One greeting per line, in sections per language
 (`[pt-BR]`, `[en]`…). Task history: `~/.local/state/popup/historico.json`
 (a task ends after 2 hours without pop-ups in that folder).
 
@@ -118,7 +125,7 @@ override with `POPUP_FAVORITAS`). One greeting per line, in sections per languag
 
 ```bash
 python3 scripts/build.py          # regenerate plugins/popup and plugins/popup-auto
-python3 tests/teste.py            # 63 tests, no window (fake zenity/kdialog)
+python3 tests/teste.py            # 69 tests, no window (fake zenity/kdialog)
 ```
 
 CI runs both (`scripts/build.py --check` fails if `plugins/` is out of date).

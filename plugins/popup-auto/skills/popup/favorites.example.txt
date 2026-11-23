@@ -1,0 +1,20 @@
+# Favorite greetings: one per line, in the section of the conversation's language.
+# Lines starting with # are comments. Sections: [pt-BR], [pt-PT], [en], [es], [ja]…
+#
+# This file lives in your config folder (`popup.py favorite list` shows where),
+# so skill updates never erase it.
+#
+# To add one: edit this file, ask the agent, run
+#   popup.py favorite add --lang en "Hey, got a sec?"
+# or click the ⭐ in the GTK window.
+#
+# Rules (the script refuses the pop-up otherwise):
+#   - each greeting, favorite or not, at most once per task;
+#   - never two favorites in consecutive pop-ups;
+#   - a favorite only counts in its own language/variant section.
+
+[pt-BR]
+
+[en]
+
+[es]
