@@ -20,6 +20,7 @@ Python 3 e uma sessão gráfica. O script escolhe a interface na hora, pela orde
 | Linux (KDE, LXQt) | `kdialog` → GTK4 + libadwaita → `zenity` → Tkinter |
 | macOS | `osascript` → Tkinter |
 | Windows | Tkinter → PowerShell (WinForms) |
+| WSL (Linux no Windows) | janela nativa do Windows pelo `powershell.exe` → GTK4 → `zenity` → `kdialog` → Tkinter |
 
 Ele usa a primeira que estiver instalada e abrir. Se uma quebrar, tenta a próxima.
 Só a GTK mostra cartões, mascote e atalhos 1-9 completos; as outras mostram uma lista simples.

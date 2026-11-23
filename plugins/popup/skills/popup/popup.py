@@ -27,13 +27,13 @@ Portuguese names from version 0.1 still work as aliases: pergunta, simnao, diagn
 favorita, --chamada, --pergunta, --contexto, --opcao, --sem-outra, --idioma.
 """
 import argparse
+import base64
 import html
 import json
 import os
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -49,6 +49,21 @@ MARCA_TIMEOUT = "§TIMEOUT§"
 LINUX = sys.platform.startswith(("linux", "freebsd", "openbsd", "netbsd"))
 MAC = sys.platform == "darwin"
 WINDOWS = sys.platform == "win32"
+
+
+def _detecta_wsl():
+    if not sys.platform.startswith("linux"):
+        return False
+    if os.environ.get("WSL_DISTRO_NAME") or os.environ.get("WSL_INTEROP"):
+        return True
+    try:
+        with open("/proc/sys/kernel/osrelease") as f:
+            return "microsoft" in f.read().lower()
+    except OSError:
+        return False
+
+
+WSL = _detecta_wsl()  # Linux dentro do Windows: dá para abrir janela nativa do Windows
 
 
 class Indisponivel(Exception):
@@ -103,11 +118,11 @@ class Prazo:
         return max(0, int(self.fim - time.monotonic()))
 
 
-def rodar(cmd, timeout, env=None):
+def rodar(cmd, timeout, env=None, cwd=None):
     """Roda uma ferramenta de diálogo. Devolve (código, stdout, stderr)."""
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
-                           timeout=timeout + 3, env=env)
+                           errors="replace", timeout=timeout + 3, env=env, cwd=cwd)
     except subprocess.TimeoutExpired:
         return TIMEOUT, "", ""
     except OSError as e:
@@ -161,6 +176,10 @@ def python_gtk():
     return _python_gtk[0]
 
 
+def tela_x():
+    return bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
+
+
 def tem_tkinter():
     try:
         import tkinter  # noqa: F401
@@ -169,19 +188,33 @@ def tem_tkinter():
         return False
 
 
+WSL_POWERSHELL = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+
+
+def exe_powershell():
+    """powershell.exe do Windows (nativo ou pelo WSL), ou pwsh."""
+    if WINDOWS:
+        return shutil.which("powershell") or shutil.which("pwsh")
+    if WSL:
+        return shutil.which("powershell.exe") or (WSL_POWERSHELL if os.path.exists(WSL_POWERSHELL) else None)
+    return None
+
+
 def tem_tela():
     if LINUX:
+        if WSL and exe_powershell():
+            return True  # a janela abre no Windows, mesmo sem WSLg
         return bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
     return True
 
 
 DISPONIVEL = {
-    "gtk": lambda: LINUX and python_gtk() is not None,
-    "zenity": lambda: LINUX and shutil.which("zenity") is not None,
-    "kdialog": lambda: LINUX and shutil.which("kdialog") is not None,
+    "gtk": lambda: LINUX and tela_x() and python_gtk() is not None,
+    "zenity": lambda: LINUX and tela_x() and shutil.which("zenity") is not None,
+    "kdialog": lambda: LINUX and tela_x() and shutil.which("kdialog") is not None,
     "osascript": lambda: MAC and shutil.which("osascript") is not None,
-    "powershell": lambda: WINDOWS and (shutil.which("powershell") or shutil.which("pwsh")) is not None,
-    "tkinter": tem_tkinter,
+    "powershell": lambda: exe_powershell() is not None,
+    "tkinter": lambda: (not LINUX or tela_x()) and tem_tkinter(),
 }
 
 
@@ -194,6 +227,9 @@ def ordem_padrao():
         return ["osascript", "tkinter"]
     if WINDOWS:
         return ["tkinter", "powershell"]
+    if WSL:
+        # janela nativa do Windows primeiro: não depende do WSLg nem de pacotes Linux
+        return ["powershell", "gtk", "zenity", "kdialog", "tkinter"]
     d = desktop().lower()
     if any(x in d for x in ("kde", "lxqt")):
         return ["kdialog", "gtk", "zenity", "tkinter"]
@@ -213,6 +249,8 @@ def ordem(forcado):
 def diagnostico(forcado, idioma, origem):
     print(f"system: {sys.platform}")
     print(f"language: {idioma} (from {origem})")
+    if WSL:
+        print(f"wsl: yes · powershell.exe: {exe_powershell() or 'not found'}")
     if LINUX:
         print(f"session: {os.environ.get('XDG_SESSION_TYPE', '?')} · desktop: {desktop() or '?'}")
         print(f"screen: WAYLAND_DISPLAY={os.environ.get('WAYLAND_DISPLAY', '')} "
@@ -396,10 +434,14 @@ def ui_osascript(a):
 
 
 PS_FORM = r'''
+# Erro interno sai com 3 (não com 1, que é "usuário fechou"): popup.py tenta a próxima interface.
+trap { [Console]::Error.WriteLine("popup.ps1: " + $_.ToString()); exit 3 }
+$ProgressPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+[System.Windows.Forms.Application]::EnableVisualStyles()
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
-$d = $env:POPUP_DADOS | ConvertFrom-Json
+$d = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__DADOS_B64__')) | ConvertFrom-Json
 $script:resp = $null; $script:cod = 1; $script:rest = [int]$d.timeout
 $laranja = [Drawing.Color]::FromArgb(217, 119, 87)
 
@@ -473,7 +515,7 @@ $f.add_KeyDown({ param($s, $e)
   if ($n -ge 1 -and $n -le 9 -and $n -le $ops.Count -and -not ($script:tb -and $script:tb.Focused)) {
     $script:resp = $ops[$n - 1].valor; $script:cod = 0; $f.Close() }
 })
-$f.add_Shown({ $f.Activate() })
+$f.add_Shown({ $f.Activate(); [System.Media.SystemSounds]::Asterisk.Play() })
 [void]$f.ShowDialog()
 $timer.Stop()
 if ($script:resp) { [Console]::Out.Write($script:resp) }
@@ -487,8 +529,12 @@ def contador_partes():
     return pre.replace("⏳", "").lstrip(), pos
 
 
-def ui_powershell(a):
-    exe = shutil.which("powershell") or shutil.which("pwsh")
+LIMITE_LINHA_COMANDO = 32000  # o Windows aceita até 32767 caracteres
+
+
+def comando_powershell(a, exe):
+    """Monta o comando: script e dados vão em -EncodedCommand, sem arquivo temporário
+    nem variável de ambiente (que não atravessam do WSL para o Windows sem WSLENV)."""
     dados = {
         "titulo": titulo_janela(), "modo": a.modo, "chamada": a.chamada,
         "pergunta": a.pergunta, "contexto": a.contexto, "timeout": a.timeout,
@@ -496,18 +542,24 @@ def ui_powershell(a):
         "cpre": contador_partes()[0], "cpos": contador_partes()[1],
         "opcoes": [{"rotulo": rotulo(*o), "valor": o[1]} for o in opcoes(a)],
     }
-    with tempfile.NamedTemporaryFile("w", suffix=".ps1", delete=False, encoding="utf-8-sig") as fh:
-        fh.write(PS_FORM)
-        caminho = fh.name
-    try:
-        som()
-        env = dict(os.environ, POPUP_DADOS=json.dumps(dados, ensure_ascii=False))
-        cod, out, err = rodar([exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-STA",
-                               "-File", caminho], a.timeout + 10, env=env)
-    finally:
-        os.unlink(caminho)
+    b64_dados = base64.b64encode(json.dumps(dados, ensure_ascii=False).encode("utf-8")).decode("ascii")
+    script = PS_FORM.replace("__DADOS_B64__", b64_dados)
+    codificado = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
+    cmd = [exe, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-STA",
+           "-EncodedCommand", codificado]
+    if sum(len(c) + 1 for c in cmd) > LIMITE_LINHA_COMANDO:
+        raise Indisponivel("question too long for the PowerShell command line")
+    return cmd
+
+
+def ui_powershell(a):
+    exe = exe_powershell()
+    cmd = comando_powershell(a, exe)
+    # No WSL, rodar o .exe numa pasta Linux faz o Windows reclamar de caminho UNC.
+    cwd = "/mnt/c" if WSL and os.path.isdir("/mnt/c") else None
+    cod, out, err = rodar(cmd, a.timeout + 15, cwd=cwd)
     if cod not in (OK, NAO, TIMEOUT):
-        raise Indisponivel(f"powershell exited with {cod}: {err.strip()}")
+        raise Indisponivel(f"powershell exited with {cod}: {err.strip()[-300:]}")
     return out or None, cod
 
 

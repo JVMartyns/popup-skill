@@ -27,8 +27,10 @@ instead of the terminal, so you can work in another window and still answer.
   | Linux (KDE, LXQt) | kdialog → GTK4 + libadwaita → zenity → Tkinter |
   | macOS | osascript → Tkinter |
   | Windows | Tkinter → PowerShell (WinForms) |
+  | WSL *(experimental)* | native Windows window via `powershell.exe` → GTK4 → zenity → kdialog → Tkinter |
 
-  No screen at all (SSH, CI) → exit 6, and the agent asks in the terminal instead.
+  On WSL the window opens on Windows itself, so it works without WSLg or Linux GUI
+  packages. No screen at all (SSH, CI) → exit 6, and the agent asks in the terminal instead.
 - **10 languages for the window texts:** pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja
   (others fall back to English). The agent writes the greeting and question in *your*
   language and passes `--lang`.
@@ -150,15 +152,16 @@ Everything stays on your computer. The skill makes **no network requests** and
 collects no data. See [PRIVACY.md](PRIVACY.md).
 
 - **Runs:** Python 3; one dialog tool from the table above (GTK through PyGObject,
-  `zenity`, `kdialog`, `osascript`, `powershell` or Tkinter); `git branch --show-current`
+  `zenity`, `kdialog`, `osascript`, `powershell` — on WSL, Windows' `powershell.exe` — or
+  Tkinter); `git branch --show-current`
   to show the branch in the window title; optionally `canberra-gtk-play` (Linux),
   `afplay` (macOS) or a system beep (Windows) for the sound. The agent may also run
   `notify-send` when a question is left unanswered.
 - **Writes:** `~/.config/popup/favorites.txt` (your favorite greetings) and
   `~/.local/state/popup/historico.json` (greetings shown per working folder, kept for
   2 hours to enforce the repetition rules). On Windows: `%APPDATA%\popup\` and
-  `%LOCALAPPDATA%\popup\`. On Windows the PowerShell interface also writes a temporary
-  `.ps1` file and deletes it after use.
+  `%LOCALAPPDATA%\popup\`. The PowerShell interface writes no files: the window
+  script and its texts go inline in the command (`-EncodedCommand`).
 - **Reads:** environment variables listed above, the locale, and those two files.
 
 ## Development
@@ -173,8 +176,9 @@ python3 tests/teste.py            # 69 tests, no window (fake zenity/kdialog)
 CI runs both (`scripts/build.py --check` fails if `plugins/` is out of date).
 `tests/manual/screenshot_gtk.py` renders the GTK window to a PNG.
 
-Untested on real hardware so far: kdialog, osascript (macOS) and PowerShell (Windows).
-Reports welcome.
+Untested on real hardware so far: kdialog, osascript (macOS), PowerShell (Windows) and
+WSL. If you can try one of them, [docs/TESTING.md](docs/TESTING.md) has a 5-minute
+checklist. Reports welcome.
 
 ## License
 

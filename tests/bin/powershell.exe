@@ -1,0 +1,3 @@
+#!/bin/sh
+# powershell.exe falso para os testes de WSL
+exec python3 "$(dirname "$0")/fake_ps.py" "$@"

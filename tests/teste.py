@@ -205,5 +205,41 @@ cod2, out2, err2, ch2 = roda(["yesno", "--backend", "zenity", "--lang", "pt-BR",
                               "--question", "Q?"], ["0|"], e2)
 checa("POPUP_FAVORITAS/POPUP_ESTADO (apelidos) valem: 2ª favorita seguida → 7", (cod, cod2) == (0, 7), (cod, cod2, err2))
 
+print("9. WSL: janela nativa do Windows pelo powershell.exe (falso)")
+WSL = {"WSL_DISTRO_NAME": "Ubuntu-Teste", "DISPLAY": "", "WAYLAND_DISPLAY": ""}
+r = subprocess.run([f"{SK}/popup.py", "doctor"], capture_output=True, text=True,
+                   env=dict(base, PATH=f"{BIN}:" + base["PATH"], **WSL))
+checa("doctor no WSL: 'wsl: yes', powershell primeiro e escolhido",
+      "wsl: yes" in r.stdout and "order: powershell, gtk" in r.stdout and "chosen: powershell" in r.stdout, r.stdout)
+OPS = ["--option", "🧩|Opción A|hace A", "--option", "🚀|Opción B|hace B"]
+cod, out, err, ch = roda(["ask", "--lang", "es", "--greeting", "Oye, ¿me ayudas?", "--question", "¿Cuál?",
+                          "--context", "ctx", *OPS], ["0|Opción B"], WSL)
+d = ch[0].get("dados") if ch else {}
+checa("ask no WSL sem tela X: abre no Windows e devolve a opção", (cod, out) == (0, "Opción B") and ch and ch[0]["prog"] == "powershell.exe", (cod, out, err))
+checa("script com dados embutidos e trap de erro", ch and ch[0]["script_ok"] and ch[0]["trap"], ch[:1])
+checa("dados: modo, textos em es, opções e contador", d and d["modo"] == "pergunta" and d["t"]["agora_nao"] == "Ahora no"
+      and [o["valor"] for o in d["opcoes"]] == ["Opción A", "Opción B"] and d["cpre"] == "se cierra en " and d["contexto"] == "ctx", d)
+checa("sem arquivo temporário: usa -EncodedCommand, não -File", ch and "-EncodedCommand" in ch[0]["flags"] and "-File" not in ch[0]["flags"] and "-STA" in ch[0]["flags"], ch[:1])
+cod, out, err, ch = roda(["yesno", "--lang", "pt-BR", "--greeting", "G1?", "--question", "Q?"], ["0|yes"], WSL)
+checa("yesno no WSL → yes, exit 0", (cod, out) == (0, "yes") and ch[0]["dados"]["t"]["sim"] == "Sim", (cod, out, err))
+cod, out, err, ch = roda(["yesno", "--lang", "en", "--greeting", "G2?", "--question", "Q?"], ["1|no"], WSL)
+checa("yesno no WSL → no, exit 1", (cod, out) == (1, "no"), (cod, out, err))
+cod, out, err, ch = roda(["terminal", "--lang", "ja", "--greeting", "G3?", "--question", "Q?"], ["5|"], WSL)
+checa("timeout do PowerShell vira exit 5", cod == 5 and ch[0]["dados"]["t"]["ja_vou"] == "今行きます！", (cod, err))
+cod, out, err, ch = roda(["yesno", "--lang", "en", "--greeting", "G4?", "--question", "Q?"], ["3|"], WSL)
+checa("erro no PowerShell (exit 3) sem tela X → exit 6", cod == 6 and "powershell failed" in err, (cod, err))
+cod, out, err, ch = roda(["yesno", "--lang", "en", "--greeting", "G5?", "--question", "Q?"], ["3|", "0|"],
+                         dict(WSL, DISPLAY=":99"))
+checa("erro no PowerShell com WSLg → cai para o zenity", cod == 0 and [c["prog"] for c in ch] == ["powershell.exe", "zenity"], (cod, [c["prog"] for c in ch], err))
+cod, out, err, ch = roda(["ask", "--lang", "en", "--greeting", "G6?", "--question", "Q?",
+                          "--option", "📦|" + "x" * 40000 + "|grande"], ["0|x"], WSL)
+checa("pergunta grande demais para a linha de comando → não chama o PowerShell", cod == 6 and not ch, (cod, ch[:1], err))
+cod, out, err, ch = roda(["yesno", "--backend", "powershell", "--lang", "en", "--greeting", "G7?", "--question", "Q?"], ["0|yes"])
+checa("Linux fora do WSL não usa powershell.exe", cod == 6 and not ch, (cod, [c["prog"] for c in ch]))
+e9 = dict(WSL, POPUP_STATE_DIR=tempfile.mkdtemp(dir=S))
+roda(["yesno", "--lang", "en", "--greeting", "Same one?", "--question", "Q?"], ["0|yes"], e9)
+cod, out, err, ch = roda(["yesno", "--lang", "en", "--greeting", "Same one?", "--question", "Q?"], ["0|yes"], e9)
+checa("histórico vale no WSL: chamada repetida → 7", cod == 7 and not ch, (cod, err))
+
 print("\n" + ("TUDO OK" if not falhas else f"{len(falhas)} FALHA(S): {falhas}"))
 sys.exit(1 if falhas else 0)
