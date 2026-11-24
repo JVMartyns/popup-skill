@@ -26,13 +26,19 @@ em vez do terminal. Você pode trabalhar em outra janela e responder mesmo assim
   | Linux (GNOME, XFCE…) | GTK4 + libadwaita → zenity → kdialog → Tkinter |
   | Linux (KDE, LXQt) | kdialog → GTK4 + libadwaita → zenity → Tkinter |
   | macOS | osascript → Tkinter |
-  | Windows | Tkinter → PowerShell (WinForms) |
-  | WSL | janela nativa do Windows pelo `powershell.exe` → GTK4 → zenity → kdialog → Tkinter |
+  | Windows | WPF pelo PowerShell 5.1 (cartões, mascote, emoji colorido) → Tkinter → PowerShell (WinForms) |
+  | WSL | janela nativa do Windows pelo `powershell.exe` (WinForms) → GTK4 → zenity → kdialog → Tkinter |
+
+  No Windows nativo o padrão é uma janela WPF com o mesmo desenho da GTK: cartões de
+  opção, mascote, emoji colorido e atalhos 1–9. Ela segue o tema claro/escuro do
+  Windows. As quatro DLLs necessárias vêm dentro da skill (`assets/wpf/`, cerca de
+  1,8 MB), então não há nada para o usuário instalar: o próprio PowerShell 5.1 do
+  Windows abre a janela. Se as DLLs ou o PowerShell faltarem, o script cai para o
+  Tkinter e depois para a janela WinForms mais simples (emoji em preto e branco).
 
   No WSL a janela abre no próprio Windows, então funciona sem WSLg e sem pacotes
-  gráficos do Linux. A janela do Windows mostra os emojis em preto e branco: o
-  WinForms não desenha emoji colorido. Sem tela (SSH, CI) → exit 6, e o agente
-  pergunta no terminal.
+  gráficos do Linux; o WSL continua usando a janela WinForms. Sem tela (SSH, CI) →
+  exit 6, e o agente pergunta no terminal.
 - **Textos da janela em 10 idiomas:** pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja
   (os outros saem em inglês). O agente escreve a chamada e a pergunta no *seu* idioma e
   passa `--lang`.
@@ -99,7 +105,9 @@ com o nome do agente para ele aparecer no título da janela.
 
 Python 3 e uma sessão gráfica. Cada interface precisa da sua ferramenta:
 GTK4 + libadwaita + PyGObject (o visual mais completo), ou `zenity`, ou `kdialog`, ou
-Tkinter; macOS e Windows usam `osascript` / PowerShell, que já vêm no sistema.
+Tkinter; macOS e Windows usam `osascript` / PowerShell, que já vêm no sistema. No
+Windows, a janela WPF usa as DLLs incluídas em `skills/popup/assets/wpf/` e o
+PowerShell 5.1, ambos já presentes; a alternativa WinForms só precisa do PowerShell.
 Opcionais: `notify-send`, `canberra-gtk-play` (som).
 
 Para ver o que seria usado, sem abrir janela:
@@ -140,7 +148,8 @@ Vindo da 0.1? Os nomes em português (`pergunta`, `simnao`, `--chamada`, `--idio
 ## Chamadas favoritas
 
 O jeito mais fácil é pedir ao agente: *"guarda essa chamada nas favoritas"*, *"mostra
-minhas favoritas"*. Ele já sabe onde está o script. Ou clique na ⭐ da janela GTK.
+minhas favoritas"*. Ele já sabe onde está o script. Ou clique na ⭐ da janela GTK ou
+WPF.
 Pelo terminal (veja `$POPUP` na próxima seção):
 
 ```bash
@@ -176,16 +185,20 @@ Tudo fica no seu computador. A skill **não acessa a rede** e não coleta dados.
 [PRIVACY.md](PRIVACY.md).
 
 - **Roda:** Python 3; uma ferramenta de diálogo da tabela acima (GTK pelo PyGObject,
-  `zenity`, `kdialog`, `osascript`, `powershell` — no WSL, o `powershell.exe` do Windows —
-  ou Tkinter); `git branch --show-current`
+  `zenity`, `kdialog`, `osascript`, `powershell` — no Windows e no WSL, o
+  `powershell.exe` — ou Tkinter); `git branch --show-current`
   para mostrar a branch no título da janela; opcionalmente `canberra-gtk-play` (Linux),
   `afplay` (macOS) ou um bipe do sistema (Windows) para o som. O agente também pode rodar
-  `notify-send` quando uma pergunta fica sem resposta.
+  `notify-send` quando uma pergunta fica sem resposta. No Windows nativo, a janela WPF
+  carrega as DLLs de `skills/popup/assets/wpf/` no PowerShell.
 - **Grava:** `~/.config/popup/favorites.txt` (suas chamadas favoritas) e
   `~/.local/state/popup/historico.json` (chamadas mostradas em cada pasta de trabalho,
   guardadas por 2 horas para aplicar as regras de repetição). No Windows:
-  `%APPDATA%\popup\` e `%LOCALAPPDATA%\popup\`. A interface PowerShell não grava
-  arquivo: o script da janela e os textos vão direto no comando (`-EncodedCommand`).
+  `%APPDATA%\popup\` e `%LOCALAPPDATA%\popup\`. A janela WPF grava o `.ps1` gerado
+  (UTF-8 com BOM) e, quando você clica na ⭐, um pequeno arquivo de controle na pasta
+  temporária do usuário; os dois são apagados logo depois que a janela fecha. A
+  alternativa WinForms não grava arquivo: o script da janela e os textos vão direto no
+  comando (`-EncodedCommand`).
 - **Lê:** as variáveis de ambiente listadas acima, o idioma do sistema e esses dois arquivos.
 
 ## Desenvolvimento
@@ -194,15 +207,19 @@ Tudo fica no seu computador. A skill **não acessa a rede** e não coleta dados.
 
 ```bash
 python3 scripts/build.py          # gera plugins/popup e plugins/popup-auto
-python3 tests/teste.py            # 69 testes, sem janela (zenity/kdialog falsos)
+python3 tests/teste.py            # 123 testes, sem janela (zenity/kdialog/powershell falsos)
 ```
 
 O CI roda os dois (`scripts/build.py --check` falha se `plugins/` estiver desatualizado).
-`tests/manual/screenshot_gtk.py` desenha a janela GTK num PNG.
+`tests/manual/screenshot_gtk.py` desenha a janela GTK num PNG. Os testes do WPF simulam
+o Windows nativo (`popup.WINDOWS = True`) e conferem o `.ps1` gerado, os dados/XAML da
+janela, a ordem das DLLs, as alternativas e a saída do `doctor`; não abrem janela.
 
-Testados em máquina real: GNOME (GTK e zenity) e WSL (janela nativa do Windows).
-Ainda não testados: kdialog, osascript (macOS) e PowerShell a partir do Python do Windows. Se você puder testar algum, o [docs/TESTING.md](docs/TESTING.md) tem um roteiro de
-5 minutos. Relatos são bem-vindos.
+Testados em máquina real: GNOME (GTK e zenity) e WSL (janela nativa do Windows,
+WinForms). A janela WPF foi feita a partir do preview aprovado, mas ainda não rodou em
+Windows nativo de verdade. Ainda não testados: kdialog, osascript (macOS) e
+WPF/Tkinter no Windows nativo. Se você puder testar algum, o
+[docs/TESTING.md](docs/TESTING.md) tem um roteiro de 5 minutos. Relatos são bem-vindos.
 
 ## Licença
 

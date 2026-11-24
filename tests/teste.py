@@ -1,4 +1,5 @@
-"""Testes da skill popup. Não abrem janela: usam zenity/kdialog falsos (tests/bin).
+"""Testes da skill popup. Não abrem janela: usam zenity/kdialog/powershell falsos
+(tests/bin); o WPF é simulado com popup.WINDOWS = True e confere o .ps1 gerado.
 
 Rodar:  python3 tests/teste.py
 """
@@ -254,6 +255,192 @@ e9 = dict(WSL, POPUP_STATE_DIR=tempfile.mkdtemp(dir=S))
 roda(["yesno", "--lang", "en", "--greeting", "Same one?", "--question", "Q?"], ["0|yes"], e9)
 cod, out, err, ch = roda(["yesno", "--lang", "en", "--greeting", "Same one?", "--question", "Q?"], ["0|yes"], e9)
 checa("histórico vale no WSL: chamada repetida → 7", cod == 7 and not ch, (cod, err))
+
+print("10. Windows nativo: interface WPF")
+import argparse, base64, re
+from xml.etree import ElementTree as ET
+import wpf as _wpf
+
+def alvo(**kw):
+    campos = dict(modo="pergunta", chamada="Chamada ✨", pergunta="Qual?", contexto="ctx",
+                  timeout=300, sem_outra=False, opcao=["🧩|A|faz A"], idioma="es", idioma_fav="es")
+    campos.update(kw)
+    return argparse.Namespace(**campos)
+
+def textos_do_script(s):
+    saida = []
+    for b in re.findall(r"FromBase64String\('([^']*)'\)", s):
+        try:
+            saida.append(base64.b64decode(b).decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            pass
+    return saida
+
+def xaml_do_script(s):
+    return next(t for t in textos_do_script(s) if t.lstrip().startswith("<"))
+
+def dados_do_script(s):
+    return json.loads(next(t for t in textos_do_script(s) if t.lstrip().startswith("{")))
+
+d = _wpf.dados(alvo(titulo="✨ Agente · repo"))
+checa("WPF dados: título, modo, textos e timeout",
+      d["titulo"] == "✨ Agente · repo" and d["modo"] == "pergunta" and d["chamada"] == "Chamada ✨"
+      and d["pergunta"] == "Qual?" and d["contexto"] == "ctx" and d["timeout"] == 300
+      and d["sem_outra"] is False and d["t"]["agora_nao"] == "Ahora no", d)
+checa("WPF dados: opção com emoji, título, descrição, valor e tecla",
+      d["opcoes"] == [{"emoji": "🧩", "titulo": "A", "desc": "faz A", "valor": "A", "tecla": 1}],
+      d["opcoes"])
+checa("WPF dados: contador es sem o emoji",
+      (d["cpre"], d["cpos"]) == ("se cierra en ", " · Esc cierra"), (d["cpre"], d["cpos"]))
+d = _wpf.dados(alvo(idioma="pt", idioma_fav="pt-BR", sem_outra=True,
+                    opcao=["sem emoji", "👉|B|"]), titulo="T")
+checa("WPF dados: opção sem 'emoji|' ganha 👉 e descrição vazia",
+      [o["emoji"] for o in d["opcoes"]] == ["👉", "👉"] and d["opcoes"][0]["valor"] == "sem emoji"
+      and d["opcoes"][1]["desc"] == "", d["opcoes"])
+checa("WPF dados: contador pt e sem_outra",
+      d["cpre"] == "fecha sozinho em " and d["cpos"] == " · Esc fecha" and d["sem_outra"], d)
+
+s = _wpf.script(alvo(titulo="✨ Agente · repo",
+                     opcao=["🧩|Ação & <b>|faz \"A\"", "🚀|B|faz B"]), r"C:\popup\assets\wpf")
+checa("WPF script: dados e XAML embutidos, sem marcadores",
+      "__DADOS_B64__" not in s and "__XAML_B64__" not in s and "__ASSETS__" not in s
+      and "ShowDialog" in s and s.lstrip().splitlines()[1].startswith("trap"), s[:120])
+checa("WPF script: dados conferem com dados()",
+      dados_do_script(s)["chamada"] == "Chamada ✨" and dados_do_script(s)["opcoes"][1]["valor"] == "B",
+      dados_do_script(s))
+x = xaml_do_script(s)
+checa("WPF XAML: título, chamada, pergunta, contexto e selo",
+      'Title="✨ Agente · repo"' in x and "Chamada ✨" in x and "Qual?" in x and "ctx" in x
+      and "PREGUNTA RÁPIDA" in x, x[:200])
+checa("WPF XAML: cartões com emoji, texto e tecla 1..9",
+      "🧩" in x and "Ação &amp; &lt;b&gt;" in x and "faz &quot;A&quot;" in x and 'Text="1"' in x
+      and 'Text="2"' in x, x)
+checa("WPF XAML: campo de resposta e botões Agora não/Responder",
+      'x:Name="entrada"' in x and "Ahora no" in x and "Responder" in x, x)
+e = ET.fromstring(x)
+checa("WPF XAML: XML válido com emoji, &, <, aspas e quebra de linha",
+      e is not None and "&#10;" in xaml_do_script(
+          _wpf.script(alvo(pergunta="linha 1\nlinha 2"), "/tmp/a")), "XML inválido")
+checa("WPF script: tema automático com tokens e as duas paletas",
+      "AppsUseLightTheme" in s and "__BG__" in x and "__CARD_BG__" in x
+      and "#242424" in s and "#FAFAFA" in s and "ValidateSet('auto', 'light', 'dark')" in s, s[:80])
+ordem_dll = ["Stfu.dll", "Typography.OpenFont.dll", "Typography.GlyphLayout.dll", "Emoji.Wpf.dll"]
+pos = [s.index(n) for n in ordem_dll]
+checa("WPF script: DLLs carregadas na ordem (Stfu antes de Emoji.Wpf)", pos == sorted(pos), pos)
+codificado = len(base64.b64encode(s.encode("utf-16-le")))
+checa("WPF script: caminho dos assets e grande demais para -EncodedCommand",
+      r"C:\popup\assets\wpf" in s and codificado > 32767, (r"C:\popup\assets\wpf" in s, len(s), codificado))
+checa("WPF script: estrela grava o controle e usa as dicas do idioma",
+      "estrelaTexto" in s and "WriteAllText" in s and "fav_salva" in s and "$d.controle" in s, "")
+s = _wpf.script(alvo(modo="pergunta", sem_outra=True), "/tmp/assets")
+x = xaml_do_script(s)
+checa("WPF sem_outra: sem campo de resposta e sem Responder",
+      'x:Name="entrada"' not in x and "Ahora no" in x and "Responder" not in x, x)
+x = xaml_do_script(_wpf.script(alvo(modo="simnao"), "/tmp/assets"))
+checa("WPF simnao: botões Não/Sim e sem cartões",
+      'x:Name="naoBtn"' in x and 'x:Name="simBtn"' in x and 'x:Name="opcoes"' in x
+      and "🧩" not in x, x)
+x = xaml_do_script(_wpf.script(alvo(modo="terminal", idioma="ja"), "/tmp/assets"))
+checa("WPF terminal: botão Já vou!", 'x:Name="jaVou"' in x and "今行きます！" in x, x)
+
+def roda_win(args, fila, env_extra=None, pre="", path=None):
+    """Roda popup.py como no Windows nativo (popup.WINDOWS=True), sem janela de verdade."""
+    launcher = f"{S}/roda_win.py"
+    with open(launcher, "w") as f:
+        f.write("import sys\n"
+                f"sys.path.insert(0, {SK!r})\nimport popup\npopup.WINDOWS = True\n{pre}\n"
+                "sys.argv = ['popup.py'] + sys.argv[1:]\npopup.main()\n")
+    log, resp = f"{S}/log.jsonl", f"{S}/fila.txt"
+    open(log, "w").close(); open(resp, "w").write("\n".join(fila))
+    env = dict(base, PATH=f"{BIN}:" + base["PATH"], FAKE_LOG=log, FAKE_RESP=resp,
+               LANG="en_US.UTF-8", POPUP_STATE_DIR=tempfile.mkdtemp(dir=S),
+               POPUP_FAVORITES=f"{S}/fav-copia.txt")
+    shutil.copyfile(FIXTURE_FAV, env["POPUP_FAVORITES"])
+    env.update(env_extra or {})
+    if path:
+        env["PATH"] = path
+    r = subprocess.run([sys.executable, launcher, *args], capture_output=True, text=True, env=env, timeout=30)
+    chamadas = [json.loads(l) for l in open(log) if l.strip()]
+    return r.returncode, r.stdout.strip(), r.stderr, chamadas
+
+cod, out, err, ch = roda_win(["doctor"], [])
+checa("doctor no Windows: ordem wpf, tkinter, powershell e wpf escolhido",
+      "order: wpf, tkinter, powershell" in out and "chosen: wpf" in out
+      and re.search(r"wpf\s+✓", out), out)
+cod, out, err, ch = roda_win(["ask", "--lang", "es", "--greeting", "Oye ✨", "--question", "¿Cuál?",
+                              "--context", "ctx", "--option", "🧩|Opción A|hace A",
+                              "--option", "🚀|Opción B|hace B"], ["0|Opción B"])
+d = ch[0]["dados"] if ch else {}
+checa("Windows ask: abre o WPF, devolve a opção e sai 0",
+      (cod, out) == (0, "Opción B") and ch and ch[0]["forma"] == "file", (cod, out, err, ch[:1]))
+checa("Windows ask: -File UTF-8 BOM, -STA, sem -EncodedCommand",
+      ch and ch[0]["bom"] and "-File" in ch[0]["flags"] and "-STA" in ch[0]["flags"]
+      and "-EncodedCommand" not in ch[0]["flags"], ch[:1])
+checa("Windows ask: dados com modo, textos em es e opções",
+      d and d["modo"] == "pergunta" and d["t"]["agora_nao"] == "Ahora no"
+      and [o["valor"] for o in d["opcoes"]] == ["Opción A", "Opción B"]
+      and d["cpre"] == "se cierra en " and d["contexto"] == "ctx", d)
+checa("Windows ask: XAML com chamada, opções e caminho dos assets no script",
+      ch and "Oye ✨" in ch[0]["xaml"] and "Opción B" in ch[0]["xaml"]
+      and "/assets/wpf" in ch[0]["script"], (ch[0].get("xaml", "")[:200] if ch else None))
+checa("Windows ask: script pronto e arquivo temporário apagado",
+      ch and ch[0]["script_ok"] and ch[0]["trap"] and not os.path.exists(ch[0]["caminho"]), ch[:1])
+checa("Windows ask: controle da estrela em arquivo temporário",
+      d and d["favorita"] is False and d["controle"].endswith("favorita"), d)
+cod, out, err, ch = roda_win(["yesno", "--lang", "pt-BR", "--greeting", "G?",
+                              "--question", "Q?"], ["0|yes"])
+x = ch[0]["xaml"] if ch else ""
+checa("Windows yesno: Sim/Não e saída yes",
+      (cod, out) == (0, "yes") and 'x:Name="simBtn"' in x and "Sim" in x and "Não" in x, (cod, out, err))
+cod, out, err, ch = roda_win(["terminal", "--lang", "ja", "--greeting", "G?", "--question", "Q?"], ["5|"])
+checa("Windows terminal: timeout vira exit 5", cod == 5 and ch and ch[0]["dados"]["timeout"] == 300,
+      (cod, err))
+cod, out, err, ch = roda_win(["yesno", "--lang", "en", "--greeting", "G?", "--question", "Q?",
+                              "--backend", "wpf,powershell"], ["0|yes"],
+                             pre="import wpf\nwpf.PASTA = '/nao-existe'")
+checa("sem DLLs do WPF: cai para o WinForms (fallback)",
+      cod == 0 and ch and ch[0]["forma"] == "encoded", (cod, [c["forma"] for c in ch], err))
+cod, out, err, ch = roda_win(["yesno", "--lang", "en", "--greeting", "G?", "--question", "Q?",
+                              "--backend", "wpf"], ["0|yes"], path="/usr/bin:/bin")
+checa("sem powershell no PATH: WPF indisponível, exit 6, sem janela",
+      cod == 6 and not ch, (cod, ch[:1], err))
+cod, out, err, ch = roda_win(["doctor"], [], pre="import wpf\nwpf.PASTA = '/nao-existe'")
+linhas = [l for l in out.splitlines() if l.strip().startswith("wpf")]
+checa("doctor com DLLs ausentes marca wpf ✗",
+      bool(linhas) and "✗" in linhas[0], out)
+cod, out, err, ch = roda_win(["doctor"], [])
+linhas = [l for l in out.splitlines() if l.strip().startswith("wpf")]
+checa("doctor mostra wpf", bool(linhas) and "✓" in linhas[0], out)
+cod, out, err, ch = roda(["yesno", "--backend", "wpf", "--lang", "en", *C], ["0|yes"])
+checa("Linux (fora do WSL) não usa WPF", cod == 6 and not ch, (cod, ch[:1], err))
+
+print("11. WPF: favorita pela estrela")
+os.environ["POPUP_FAVORITES"] = FIXTURE_FAV
+try:
+    checa("WPF dados: estrela marcada quando a chamada já é favorita",
+          _wpf.dados(alvo(chamada=F1, idioma="pt-BR", idioma_fav="pt-BR", titulo="T"))["favorita"] is True)
+    checa("WPF dados: estrela vazia para chamada nova",
+          _wpf.dados(alvo(chamada="Nova chamada", idioma="pt-BR", idioma_fav="pt-BR", titulo="T"))["favorita"] is False)
+finally:
+    os.environ.pop("POPUP_FAVORITES", None)
+e = novo_estado()
+os.environ["POPUP_FAVORITES"] = e["POPUP_FAVORITES"]
+try:
+    a_fav = alvo(chamada="Nova favorita da estrela", idioma="pt-BR", idioma_fav="pt-BR")
+    controle = f"{S}/controle-estrela"
+    open(controle, "w").write("1")
+    r = _wpf.aplicar_favorita(a_fav, controle)
+    checa("estrela: '1' grava a chamada nas favoritas",
+          r is True and "Nova favorita da estrela" in open(e["POPUP_FAVORITES"]).read(), r)
+    open(controle, "w").write("0")
+    r = _wpf.aplicar_favorita(a_fav, controle)
+    checa("estrela: '0' tira a chamada das favoritas",
+          r is False and "Nova favorita da estrela" not in open(e["POPUP_FAVORITES"]).read(), r)
+    checa("estrela: sem clique (sem arquivo) não mexe",
+          _wpf.aplicar_favorita(a_fav, f"{S}/nao-existe") is None
+          and "Nova favorita da estrela" not in open(e["POPUP_FAVORITES"]).read())
+finally:
+    os.environ.pop("POPUP_FAVORITES", None)
 
 print("\n" + ("TUDO OK" if not falhas else f"{len(falhas)} FALHA(S): {falhas}"))
 sys.exit(1 if falhas else 0)

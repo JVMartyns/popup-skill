@@ -12,6 +12,9 @@
   - `~/.local/state/popup/historico.json` — the greetings shown in each working folder,
     kept to enforce the repetition rules; entries older than 2 hours are discarded
     (Windows: `%LOCALAPPDATA%\popup\historico.json`).
+- While a pop-up is open, the Windows WPF window writes a temporary `.ps1` (and, if you
+  click the ⭐, a small control file) to the system temp folder. Both are deleted as
+  soon as the window closes.
 - The questions and answers shown in the pop-ups go only between the window and the
   agent running on your machine. What the agent does with them is governed by the
   agent's own privacy terms (for Claude Code, Anthropic's).
@@ -32,6 +35,9 @@ Questions: open an issue at https://github.com/JVMartyns/popup-skill/issues.
   - `~/.local/state/popup/historico.json` — as chamadas mostradas em cada pasta de
     trabalho, para aplicar as regras de repetição; registros com mais de 2 horas são
     descartados (Windows: `%LOCALAPPDATA%\popup\historico.json`).
+- Enquanto um pop-up está aberto, a janela WPF do Windows grava um `.ps1` temporário
+  (e, se você clicar na ⭐, um pequeno arquivo de controle) na pasta temporária do
+  sistema. Os dois são apagados assim que a janela fecha.
 - As perguntas e respostas dos pop-ups circulam só entre a janela e o agente que roda na
   sua máquina. O que o agente faz com elas segue os termos de privacidade dele (no
   Claude Code, os da Anthropic).

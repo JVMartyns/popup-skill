@@ -26,12 +26,19 @@ instead of the terminal, so you can work in another window and still answer.
   | Linux (GNOME, XFCE…) | GTK4 + libadwaita → zenity → kdialog → Tkinter |
   | Linux (KDE, LXQt) | kdialog → GTK4 + libadwaita → zenity → Tkinter |
   | macOS | osascript → Tkinter |
-  | Windows | Tkinter → PowerShell (WinForms) |
-  | WSL | native Windows window via `powershell.exe` → GTK4 → zenity → kdialog → Tkinter |
+  | Windows | WPF via PowerShell 5.1 (cards, mascot, color emoji) → Tkinter → PowerShell (WinForms) |
+  | WSL | native Windows window via `powershell.exe` (WinForms) → GTK4 → zenity → kdialog → Tkinter |
+
+  On native Windows the default is a WPF window with the same layout as the GTK one:
+  option cards, the mascot, color emoji, and the 1–9 shortcuts. It follows the Windows
+  light/dark setting. The four small DLLs it needs ship inside the skill
+  (`assets/wpf/`, about 1.8 MB), so there is nothing for the user to install: Windows'
+  own PowerShell 5.1 runs it. If those DLLs or PowerShell are missing, the script falls
+  back to Tkinter and then to the simpler WinForms window (black-and-white emoji).
 
   On WSL the window opens on Windows itself, so it works without WSLg or Linux GUI
-  packages. The Windows window shows emoji in black and white: WinForms cannot draw
-  color emoji. No screen at all (SSH, CI) → exit 6, and the agent asks in the terminal instead.
+  packages; WSL keeps using the WinForms window. No screen at all (SSH, CI) → exit 6,
+  and the agent asks in the terminal instead.
 - **10 languages for the window texts:** pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja
   (others fall back to English). The agent writes the greeting and question in *your*
   language and passes `--lang`.
@@ -98,7 +105,9 @@ agent's name to show it in the window title.
 
 Python 3 and a graphical session. Each interface needs its own tool:
 GTK4 + libadwaita + PyGObject (best look), or `zenity`, or `kdialog`, or Tkinter;
-macOS and Windows use built-in `osascript` / PowerShell. Optional: `notify-send`,
+macOS and Windows use built-in `osascript` / PowerShell. On Windows, the WPF window
+uses the DLLs bundled in `skills/popup/assets/wpf/` and PowerShell 5.1, both already
+present; the WinForms fallback needs only PowerShell. Optional: `notify-send`,
 `canberra-gtk-play` (sound).
 
 Check what would be used, without opening a window:
@@ -139,7 +148,8 @@ is now `yes`/`no` (the exit code is the same).
 ## Favorite greetings
 
 The easiest way is to ask the agent: *"save this greeting as a favorite"*, *"show my
-favorites"*. It already knows where the script is. Or click the ⭐ in the GTK window.
+favorites"*. It already knows where the script is. Or click the ⭐ in the GTK or WPF
+window.
 From a shell (see the next section for `$POPUP`):
 
 ```bash
@@ -174,16 +184,19 @@ Everything stays on your computer. The skill makes **no network requests** and
 collects no data. See [PRIVACY.md](PRIVACY.md).
 
 - **Runs:** Python 3; one dialog tool from the table above (GTK through PyGObject,
-  `zenity`, `kdialog`, `osascript`, `powershell` — on WSL, Windows' `powershell.exe` — or
-  Tkinter); `git branch --show-current`
+  `zenity`, `kdialog`, `osascript`, `powershell` — on Windows and WSL, `powershell.exe` —
+  or Tkinter); `git branch --show-current`
   to show the branch in the window title; optionally `canberra-gtk-play` (Linux),
   `afplay` (macOS) or a system beep (Windows) for the sound. The agent may also run
-  `notify-send` when a question is left unanswered.
+  `notify-send` when a question is left unanswered. On native Windows the WPF window
+  loads the DLLs from `skills/popup/assets/wpf/` into PowerShell.
 - **Writes:** `~/.config/popup/favorites.txt` (your favorite greetings) and
   `~/.local/state/popup/historico.json` (greetings shown per working folder, kept for
   2 hours to enforce the repetition rules). On Windows: `%APPDATA%\popup\` and
-  `%LOCALAPPDATA%\popup\`. The PowerShell interface writes no files: the window
-  script and its texts go inline in the command (`-EncodedCommand`).
+  `%LOCALAPPDATA%\popup\`. The WPF window writes its generated `.ps1` (UTF-8 with BOM)
+  and, when you click the ⭐, a small control file to the user's temp folder; both are
+  deleted right after the window closes. The WinForms fallback writes no files: its
+  script and texts go inline in the command (`-EncodedCommand`).
 - **Reads:** environment variables listed above, the locale, and those two files.
 
 ## Development
@@ -192,15 +205,20 @@ collects no data. See [PRIVACY.md](PRIVACY.md).
 
 ```bash
 python3 scripts/build.py          # regenerate plugins/popup and plugins/popup-auto
-python3 tests/teste.py            # 69 tests, no window (fake zenity/kdialog)
+python3 tests/teste.py            # 123 tests, no window (fake zenity/kdialog/powershell)
 ```
 
 CI runs both (`scripts/build.py --check` fails if `plugins/` is out of date).
-`tests/manual/screenshot_gtk.py` renders the GTK window to a PNG.
+`tests/manual/screenshot_gtk.py` renders the GTK window to a PNG. The WPF tests
+simulate native Windows (`popup.WINDOWS = True`) and check the generated `.ps1`,
+the WPF data/XAML, the DLL order, the fallbacks and the doctor output; they do not
+open a window.
 
-Tested on real hardware: GNOME (GTK and zenity) and WSL (native Windows window).
-Untested so far: kdialog, osascript (macOS) and PowerShell from native Windows Python. If you can try one of them, [docs/TESTING.md](docs/TESTING.md) has a 5-minute
-checklist. Reports welcome.
+Tested on real hardware: GNOME (GTK and zenity) and WSL (native Windows WinForms
+window). The WPF window was built from the approved preview but has not been run on
+native Windows hardware yet. Untested so far: kdialog, osascript (macOS), and native
+Windows WPF/Tkinter. If you can try one of them, [docs/TESTING.md](docs/TESTING.md)
+has a 5-minute checklist. Reports welcome.
 
 ## License
 

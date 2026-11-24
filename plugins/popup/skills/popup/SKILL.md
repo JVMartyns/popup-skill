@@ -19,11 +19,14 @@ Python 3 e uma sessão gráfica. O script escolhe a interface na hora, pela orde
 | Linux (GNOME, XFCE etc.) | GTK4 + libadwaita → `zenity` → `kdialog` → Tkinter |
 | Linux (KDE, LXQt) | `kdialog` → GTK4 + libadwaita → `zenity` → Tkinter |
 | macOS | `osascript` → Tkinter |
-| Windows | Tkinter → PowerShell (WinForms) |
-| WSL (Linux no Windows) | janela nativa do Windows pelo `powershell.exe` → GTK4 → `zenity` → `kdialog` → Tkinter |
+| Windows | WPF pelo PowerShell 5.1 → Tkinter → PowerShell (WinForms) |
+| WSL (Linux no Windows) | janela nativa do Windows pelo `powershell.exe` (WinForms) → GTK4 → `zenity` → `kdialog` → Tkinter |
 
 Ele usa a primeira que estiver instalada e abrir. Se uma quebrar, tenta a próxima.
-Só a GTK mostra cartões, mascote e atalhos 1-9 completos; as outras mostram uma lista simples.
+A GTK e a WPF mostram cartões, mascote e atalhos 1-9 completos; as outras mostram uma
+lista simples. A WPF é só do Windows nativo, com as DLLs incluídas em `assets/wpf/`
+(emoji colorido, tema claro/escuro do Windows). No WSL continua valendo a janela
+WinForms, com emoji em preto e branco.
 
 ## Caminhos
 
@@ -41,7 +44,7 @@ SKILL_DIR/popup.py doctor
 ```
 
 Para forçar uma interface (ou uma ordem), use `--backend` ou `POPUP_BACKEND`:
-`gtk`, `zenity`, `kdialog`, `osascript`, `powershell`, `tkinter`
+`gtk`, `zenity`, `kdialog`, `osascript`, `wpf`, `powershell`, `tkinter`
 (ex.: `POPUP_BACKEND=zenity,tkinter`).
 
 ## Idioma
@@ -144,7 +147,8 @@ SKILL_DIR/popup.py favorite rm  --lang <código> "<chamada>"
 SKILL_DIR/popup.py favorite list [--lang <código>]
 ```
 
-Na janela GTK, a ⭐ no canto guarda a chamada que está aparecendo; clicar de novo tira.
+Na janela GTK e na WPF, a ⭐ no canto guarda a chamada que está aparecendo; clicar de
+novo tira.
 
 ### Referência de tom em outros idiomas
 
@@ -161,7 +165,8 @@ Passe a chamada em `--greeting` nos comandos abaixo e use-a também no
 ## A janela
 
 O script `SKILL_DIR/popup.py` mostra a chamada em destaque laranja, a pergunta e um
-contador de tempo. Toca um som ao abrir. Esc fecha.
+contador de tempo. Toca um som ao abrir. Esc fecha. No Windows nativo a janela é WPF,
+com emoji colorido e o tema claro/escuro do sistema; no WSL ela é WinForms.
 
 Saída: a resposta em stdout. Exit 0 = respondeu, 1 = fechou ou recusou, 5 = timeout,
 6 = sem tela ou sem interface gráfica (faça a pergunta no terminal),

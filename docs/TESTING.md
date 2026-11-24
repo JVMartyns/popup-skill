@@ -36,6 +36,13 @@ Report: the `doctor` output, each `exit=` line, and anything odd in the windows
 **WSL:** the window should open on Windows (not through WSLg). If it does not,
 rerun step 2 with `--backend zenity` and with `--backend powershell` and report both.
 
+**Windows (native):** step 1 should show `wpf` with ✓ and `chosen: wpf`. The window
+should have color emoji, follow the Windows light/dark setting, and show the cards and
+the mascot. Rerun step 2 with `--backend powershell` (WinForms fallback, black-and-white
+emoji) and with `--backend tkinter`. If `wpf` is ✗, report whether
+`skills/popup/assets/wpf/` has the four DLLs and paste the output of
+`powershell -NoProfile -Command $PSVersionTable.PSVersion`.
+
 ---
 
 ## Português
@@ -59,3 +66,10 @@ Mande a saída do `doctor`, cada linha `exit=` e qualquer coisa estranha nas jan
 
 **WSL:** a janela deve abrir no Windows, não pelo WSLg. Se não abrir, repita o passo 2
 com `--backend zenity` e com `--backend powershell` e mande os dois resultados.
+
+**Windows (nativo):** o passo 1 deve mostrar `wpf` com ✓ e `chosen: wpf`. A janela deve
+ter emoji colorido, seguir o tema claro/escuro do Windows e mostrar os cartões e o
+mascote. Repita o passo 2 com `--backend powershell` (WinForms, emoji em preto e branco)
+e com `--backend tkinter`. Se `wpf` aparecer como ✗, informe se
+`skills/popup/assets/wpf/` tem as quatro DLLs e mande a saída de
+`powershell -NoProfile -Command $PSVersionTable.PSVersion`.

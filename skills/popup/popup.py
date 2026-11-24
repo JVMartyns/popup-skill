@@ -15,7 +15,7 @@ Usage:
                      use the one you wrote the greeting in. No translation → English.
                      Without --lang: POPUP_LANG, then the system language, then English.
   --backend NAME[,NAME...]  force the interface (or POPUP_BACKEND):
-                     gtk, zenity, kdialog, osascript, powershell, tkinter
+                     gtk, zenity, kdialog, osascript, wpf, powershell, tkinter
 
 Output: the answer on stdout (yesno: "yes"/"no"; terminal: "ok").
 Exit: 0 = answered, 1 = closed / "Not now" / "No" (yesno), 5 = timeout,
@@ -34,11 +34,13 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import textos as tx
 import favoritas as fav
+import wpf
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 UI_GTK = os.path.join(AQUI, "ui_gtk.py")
@@ -221,6 +223,7 @@ DISPONIVEL = {
     "zenity": lambda: LINUX and tela_x() and shutil.which("zenity") is not None,
     "kdialog": lambda: LINUX and tela_x() and shutil.which("kdialog") is not None,
     "osascript": lambda: MAC and shutil.which("osascript") is not None,
+    "wpf": lambda: WINDOWS and exe_powershell() is not None and wpf.completo(),
     "powershell": lambda: exe_powershell() is not None,
     "tkinter": lambda: (not LINUX or tela_x()) and tem_tkinter(),
 }
@@ -234,7 +237,7 @@ def ordem_padrao():
     if MAC:
         return ["osascript", "tkinter"]
     if WINDOWS:
-        return ["tkinter", "powershell"]
+        return ["wpf", "tkinter", "powershell"]
     if WSL:
         # janela nativa do Windows primeiro: não depende do WSLg nem de pacotes Linux
         return ["powershell", "gtk", "zenity", "kdialog", "tkinter"]
@@ -592,6 +595,41 @@ def ui_powershell(a):
     return out or None, cod
 
 
+def ui_wpf(a):
+    """Janela WPF nativa do Windows (PowerShell 5.1 + DLLs em assets/wpf).
+
+    O comando codificado passa de 32 KB, então o script vai num .ps1 temporário em
+    UTF-8 com BOM e é rodado com -File. A estrela grava um arquivo de controle que
+    aplicamos aqui, depois que a janela fecha (o script não conhece o arquivo de
+    favoritas).
+    """
+    exe = exe_powershell()
+    if not exe or not wpf.completo():
+        raise Indisponivel("WPF is not available")
+    pasta = tempfile.mkdtemp(prefix="popup-wpf-")
+    caminho = os.path.join(pasta, "popup.ps1")
+    controle = os.path.join(pasta, "favorita")
+    try:
+        try:
+            a.titulo = titulo_janela()  # o mesmo título das outras interfaces
+            texto = wpf.script(a, wpf.PASTA, controle)
+        except (OSError, ValueError) as e:
+            raise Indisponivel(str(e))
+        with open(caminho, "w", encoding="utf-8-sig", newline="\n") as f:
+            f.write(texto)
+        cmd = [exe, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+               "-STA", "-File", caminho]
+        try:
+            cod, out, err = rodar(cmd, a.timeout + 15)
+        finally:
+            wpf.aplicar_favorita(a, controle)
+        if cod not in (OK, NAO, TIMEOUT):
+            raise Indisponivel(f"wpf exited with {cod}: {err.strip()[-300:]}")
+        return out or None, cod
+    finally:
+        shutil.rmtree(pasta, ignore_errors=True)
+
+
 # Faixas de emoji no plano básico (o resto dos emoji fica acima de U+FFFF).
 _EMOJI_BMP = ((0x2300, 0x23FF),   # ⌛ ⏳ ⏰
               (0x2600, 0x27BF),   # ☀ ✏ ✅ ❤
@@ -721,7 +759,8 @@ def ui_tkinter(a):
 
 
 UIS = {"gtk": ui_gtk, "zenity": ui_zenity, "kdialog": ui_kdialog,
-       "osascript": ui_osascript, "powershell": ui_powershell, "tkinter": ui_tkinter}
+       "osascript": ui_osascript, "wpf": ui_wpf, "powershell": ui_powershell,
+       "tkinter": ui_tkinter}
 
 
 # ---------------------------------------------------------------- principal
@@ -785,7 +824,7 @@ def main():
     opcao("--lang", "--idioma", "idioma", default="", help="language code of the conversation")
     p.add_argument("--timeout", type=int, default=300, metavar="S", help="seconds (default 300)")
     p.add_argument("--backend", default=os.environ.get("POPUP_BACKEND", ""), metavar="NAMES",
-                   help="force interface(s): gtk,zenity,kdialog,osascript,powershell,tkinter")
+                   help="force interface(s): gtk,zenity,kdialog,osascript,wpf,powershell,tkinter")
     a = p.parse_intermixed_args()  # aceita "favorite add --lang ja TEXTO"
     a.modo = MODOS[a.modo]
 
