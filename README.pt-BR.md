@@ -43,7 +43,7 @@ em vez do terminal. Você pode trabalhar em outra janela e responder mesmo assim
   (os outros saem em inglês). O agente escreve a chamada e a pergunta no *seu* idioma e
   passa `--lang`.
 - **Chamadas favoritas.** Guarde as que você gosta num arquivo ou com a ⭐ da janela. O
-  script aplica as regras: nenhuma chamada repetida na tarefa, nunca duas favoritas
+  agente alterna as favoritas com chamadas novas, e o script aplica as regras: nenhuma chamada repetida na tarefa, nunca duas favoritas
   seguidas, favorita só no idioma dela.
 
 ## Instalação

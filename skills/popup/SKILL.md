@@ -96,7 +96,8 @@ Sempre que você faria uma pergunta ao usuário, escolha o estilo:
 Todo pop-up abre com uma chamada engraçada. A pergunta vem logo abaixo, inteira e
 séria: a graça fica só na primeira linha.
 
-Não repita uma chamada já usada na tarefa.
+Antes de escrever uma chamada, confira as favoritas do usuário (veja "Chamadas
+favoritas do usuário" abaixo). Não repita uma chamada já usada na tarefa.
 Quando couber, faça a chamada combinar com o momento (teste quebrado, escolha de nome,
 revisão de código), sem trazer detalhe técnico: o detalhe fica na pergunta.
 
@@ -124,10 +125,24 @@ dela. Não traduza nem adapte chamadas de outro idioma: "meu consagrado" vira
 ### Chamadas favoritas do usuário
 
 O usuário guarda chamadas de que gosta num arquivo de favoritas, uma por linha, em
-seções por idioma (`[pt-BR]`, `[pt-PT]`, `[en]`…). Para ver as do idioma da conversa:
-`SKILL_DIR/popup.py favorite list --lang <código>`. Você pode usar uma favorita
-exatamente como está, desde que seja da seção do idioma desta conversa. Nunca
-traduza nem adapte favoritas de outra seção.
+seções por idioma (`[pt-BR]`, `[pt-PT]`, `[en]`…). Use essas favoritas sempre que as
+regras deixarem. Antes de cada pop-up, faça isto:
+
+1. Rode `SKILL_DIR/popup.py favorite list --lang <código>` com o código do idioma
+   desta conversa. Rode de novo a cada pop-up, porque o usuário pode ter marcado uma
+   favorita nova com a ⭐.
+2. Se o pop-up anterior desta tarefa usou uma favorita, escreva uma chamada nova.
+3. Se o pop-up anterior não usou uma favorita, procure na lista uma favorita que ainda
+   não apareceu nesta tarefa e que combina com o momento. Se encontrar, copie essa
+   favorita exatamente como está no arquivo.
+4. Se nenhuma favorita combina com o momento, você pode adaptar uma delas ao momento.
+   A frase adaptada é uma chamada nova: o script não a reconhece como favorita.
+   Não use a mesma favorita como base de duas adaptações na mesma tarefa.
+5. Se a lista está vazia, ou se todas as favoritas já apareceram nesta tarefa, escreva
+   uma chamada nova.
+
+Com isso, os pop-ups alternam entre favorita e chamada nova até as favoritas acabarem.
+Nunca traduza nem adapte favoritas de outra seção ou de outro idioma.
 
 O script confere as regras e **recusa o pop-up com exit 7** quando:
 
@@ -152,8 +167,8 @@ novo tira.
 ### Referência de tom em outros idiomas
 
 Estes exemplos só mostram o jeito. **Não reutilize** estas frases, os vocativos nem
-as imagens delas, nem com outras palavras: escreva sempre uma chamada nova, feita
-para o momento.
+as imagens delas, nem com outras palavras. Quando não for a vez de uma favorita,
+escreva uma chamada nova, feita para o momento.
 
 - English: "Hey there, sorry to bug you, but I could use a hand with something. Got a sec?"
 - Español: "Oye, perdona la molestia, ¿me echas una mano con una duda?"

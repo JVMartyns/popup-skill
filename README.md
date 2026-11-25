@@ -43,7 +43,7 @@ instead of the terminal, so you can work in another window and still answer.
   (others fall back to English). The agent writes the greeting and question in *your*
   language and passes `--lang`.
 - **Favorite greetings.** Keep the ones you like in a file, add them with the ⭐ in the
-  window, and the script enforces the rules: no greeting repeated in a task, never two
+  window. The agent alternates them with new greetings, and the script enforces the rules: no greeting repeated in a task, never two
   favorites in a row, favorites only in their own language.
 
 ## Install
