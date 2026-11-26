@@ -88,7 +88,7 @@ function EnviarTexto {
 $win.Add_KeyDown({
     param($s, $e)
     if ($e.Key -eq [Windows.Input.Key]::Escape) {
-        $script:resposta = $null; $script:cod = 1; $win.Close(); return
+        $script:resposta = $null; $script:cod = if ($d.modo -eq 'notify') { 0 } else { 1 }; $win.Close(); return
     }
     $caixa = $win.FindName('entrada')
     if ($caixa -and $caixa.IsKeyboardFocusWithin) {
@@ -99,7 +99,7 @@ $win.Add_KeyDown({
         if ($d.modo -eq 'simnao') {
             $script:resposta = 'yes'; $script:cod = 0; $win.Close(); return
         }
-        if ($d.modo -eq 'terminal') {
+        if ($d.modo -in @('terminal', 'notify')) {
             $script:resposta = 'ok'; $script:cod = 0; $win.Close(); return
         }
     }
@@ -140,7 +140,7 @@ $win.FindName('cabecalho').Add_MouseLeftButtonDown({
 $botao = $win.FindName('minimizar')
 if ($botao) { $botao.Add_Click({ $win.WindowState = [Windows.WindowState]::Minimized }) }
 $botao = $win.FindName('fechar')
-if ($botao) { $botao.Add_Click({ $script:resposta = $null; $script:cod = 1; $win.Close() }) }
+if ($botao) { $botao.Add_Click({ $script:resposta = $null; $script:cod = if ($d.modo -eq 'notify') { 0 } else { 1 }; $win.Close() }) }
 $botao = $win.FindName('aplicar')
 if ($botao) { $botao.Add_Click({ EnviarTexto }) }
 $botao = $win.FindName('responder')
@@ -152,6 +152,8 @@ if ($botao) { $botao.Add_Click({ $script:resposta = 'no'; $script:cod = 1; $win.
 $botao = $win.FindName('simBtn')
 if ($botao) { $botao.Add_Click({ $script:resposta = 'yes'; $script:cod = 0; $win.Close() }) }
 $botao = $win.FindName('jaVou')
+if ($botao) { $botao.Add_Click({ $script:resposta = 'ok'; $script:cod = 0; $win.Close() }) }
+$botao = $win.FindName('okBtn')
 if ($botao) { $botao.Add_Click({ $script:resposta = 'ok'; $script:cod = 0; $win.Close() }) }
 
 $painel = $win.FindName('opcoes')
@@ -195,7 +197,7 @@ $timer.Interval = [TimeSpan]::FromSeconds(1)
 $timer.Add_Tick({
     $script:rest--
     if ($script:rest -le 0) {
-        $script:resposta = $null; $script:cod = 5; $win.Close()
+        $script:resposta = $null; $script:cod = if ($d.modo -eq 'notify') { 0 } else { 5 }; $win.Close()
     } else {
         AtualizaContador
     }

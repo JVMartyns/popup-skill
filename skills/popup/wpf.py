@@ -188,6 +188,11 @@ def xaml(d):
         contexto = f"""
           <emoji:TextBlock Text="{_esc(d['contexto'])}" FontSize="13" Foreground="__FG__"
                            Opacity="0.65" TextWrapping="Wrap" Margin="0,2,0,0"/>"""
+    pergunta = ""
+    if d["pergunta"]:
+        pergunta = f"""
+          <emoji:TextBlock Text="{_esc(d['pergunta'])}" FontSize="17" Foreground="__FG__"
+                           TextWrapping="Wrap" Margin="0,3,0,0"/>"""
     m, s = divmod(max(0, d["timeout"]), 60)
     contador = _esc(f"{d['cpre']}{m}:{s:02d}{d['cpos']}")
     if d["modo"] == "simnao":
@@ -197,6 +202,9 @@ def xaml(d):
     elif d["modo"] == "terminal":
         botoes = f"""
           <Button x:Name="jaVou" Style="{{StaticResource BotaoPrimario}}" Content="{_esc(t['ja_vou'])}"/>"""
+    elif d["modo"] == "notify":
+        botoes = f"""
+          <Button x:Name="okBtn" Style="{{StaticResource BotaoPrimario}}" Content="{_esc(t['ok'])}"/>"""
     else:
         botoes = f"""
           <Button x:Name="agoraNao" Style="{{StaticResource BotaoSecundario}}" Content="{_esc(t['agora_nao'])}" Margin="0,0,8,0"/>"""
@@ -431,9 +439,7 @@ def xaml(d):
 
         <StackPanel Grid.Column="1" Margin="14,2,0,0">
           <emoji:TextBlock Text="{_esc(d['chamada'])}" FontSize="24" FontWeight="ExtraBold"
-                           Foreground="__ACCENT__" TextWrapping="Wrap"/>
-          <emoji:TextBlock Text="{_esc(d['pergunta'])}" FontSize="17" Foreground="__FG__"
-                           TextWrapping="Wrap" Margin="0,3,0,0"/>{contexto}
+                           Foreground="__ACCENT__" TextWrapping="Wrap"/>{pergunta}{contexto}
         </StackPanel>
       </Grid>
 

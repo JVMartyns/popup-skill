@@ -175,7 +175,8 @@ escreva uma chamada nova, feita para o momento.
 - Español: "Oye, perdona la molestia, ¿me echas una mano con una duda?"
 
 Passe a chamada em `--greeting` nos comandos abaixo e use-a também no
-`notify-send` de pergunta pendente.
+`popup.py notify` de pergunta pendente (ou `popup.py terminal` para perguntar
+no terminal).
 
 ## A janela
 
@@ -228,11 +229,54 @@ Depois disso, espere a resposta no terminal normalmente.
 
 ## Sem resposta
 
-Exit diferente de 0 com resposta vazia (janela fechada, timeout ou exit 6): não decida
-sozinho algo que só o usuário pode decidir. Deixe a pergunta escrita no terminal.
-Em Linux com `notify-send`, avise também:
+Exit diferente de 0 com resposta vazia (janela fechada, timeout ou exit 6): não decida sozinho algo que só o usuário pode decidir. Deixe a pergunta escrita no terminal. Avise também com:
 
 ```bash
-notify-send --urgency=critical --icon="SKILL_DIR/assets/mascote.svg" \
-  "${POPUP_AGENT:-Agente}" "<chamada> Pergunta pendente no terminal."
+SKILL_DIR/popup.py notify --greeting "<chamada>" [--question "<pergunta>"]
+```
+
+O modo de apresentação padrão é `window` (popup com botão OK, 20 s). Use `--mode notification` para notificação pura do sistema sem janela. Veja "Modo de apresentação" abaixo.
+
+## Modo de apresentação
+
+O pop-up pode abrir como janela normal (`window`), janela modal (`dialog`) ou só notificação do sistema (`notification`). A ordem de precedência:
+
+1. `--mode window|dialog|notification` na linha de comando
+2. Variável `POPUP_MODE`
+3. Arquivo `~/.config/popup/preferences.txt` (formato `mode = window`)
+4. Padrão `window`
+
+Para ver o modo atual:
+```bash
+SKILL_DIR/popup.py preference
+```
+
+Para ver modo, origem e caminho do arquivo:
+```bash
+SKILL_DIR/popup.py preference list
+```
+
+Para definir o modo no arquivo:
+```bash
+SKILL_DIR/popup.py preference set dialog
+```
+
+No modo `notification`:
+- `ask` e `yesno` saem com exit 6 antes de abrir (pergunte no terminal).
+- `terminal` manda notificação crítica e sai 0.
+- `notify` manda notificação normal e sai 0.
+
+O `notify` em `window` ou `dialog` abre popup com botão OK, fecha em 20 s, sai 0 em OK/Esc/timeout.
+
+```bash
+SKILL_DIR/popup.py notify --mode notification --greeting "Tudo pronto" --question "Deploy concluído"
+```
+
+```bash
+SKILL_DIR/popup.py terminal --mode notification --greeting "Atenção" --question "Build falhou: veja o log"
+```
+
+Para perguntas pendentes no terminal (exit 6), use `notify` normal:
+```bash
+SKILL_DIR/popup.py notify --greeting "Preciso de você" --question "Qual branch fazer merge?"
 ```

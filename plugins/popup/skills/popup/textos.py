@@ -5,6 +5,7 @@ Um idioma pedido em --lang ou POPUP_LANG sem tradução vira inglês (não cai n
 sistema): o agente já escreveu a chamada nesse idioma, e inglês combina melhor do que
 o idioma do sistema. (--idioma e POPUP_IDIOMA são apelidos antigos.)
 A chamada, a pergunta e as opções não passam por aqui: o agente as escreve.
+
 """
 import locale
 import os
@@ -12,7 +13,6 @@ import subprocess
 import sys
 
 PADRAO = "en"
-
 
 def env(*nomes):
     """Primeira variável de ambiente definida (nome novo primeiro, apelidos depois)."""
@@ -34,6 +34,8 @@ TEXTOS = {
         "selo_pergunta": "PERGUNTA RÁPIDA",
         "selo_simnao": "SIM OU NÃO?",
         "selo_terminal": "TE ESPERO NO TERMINAL",
+        "selo_notify": "TAREFA CONCLUÍDA",
+        "ok": "OK",
         "fav_salvar": "Guardar esta chamada nas favoritas",
         "fav_salva": "Está nas favoritas (clique para tirar)",
     },
@@ -48,6 +50,8 @@ TEXTOS = {
         "selo_pergunta": "QUICK QUESTION",
         "selo_simnao": "YES OR NO?",
         "selo_terminal": "SEE YOU IN THE TERMINAL",
+        "selo_notify": "TASK COMPLETED",
+        "ok": "OK",
         "fav_salvar": "Save this greeting to favorites",
         "fav_salva": "In favorites (click to remove)",
     },
@@ -62,6 +66,8 @@ TEXTOS = {
         "selo_pergunta": "PREGUNTA RÁPIDA",
         "selo_simnao": "¿SÍ O NO?",
         "selo_terminal": "TE ESPERO EN LA TERMINAL",
+        "selo_notify": "TAREFA COMPLETADA",
+        "ok": "OK",
         "fav_salvar": "Guardar este saludo en favoritos",
         "fav_salva": "Está en favoritos (clic para quitarlo)",
     },
@@ -76,6 +82,8 @@ TEXTOS = {
         "selo_pergunta": "QUESTION RAPIDE",
         "selo_simnao": "OUI OU NON ?",
         "selo_terminal": "JE VOUS ATTENDS DANS LE TERMINAL",
+        "selo_notify": "TÂCHE TERMINÉE",
+        "ok": "OK",
         "fav_salvar": "Ajouter cette accroche aux favoris",
         "fav_salva": "Dans les favoris (cliquez pour retirer)",
     },
@@ -90,6 +98,8 @@ TEXTOS = {
         "selo_pergunta": "KURZE FRAGE",
         "selo_simnao": "JA ODER NEIN?",
         "selo_terminal": "ICH WARTE IM TERMINAL AUF DICH",
+        "selo_notify": "AUFGABE ERLEDIGT",
+        "ok": "OK",
         "fav_salvar": "Diese Anrede zu den Favoriten hinzufügen",
         "fav_salva": "In den Favoriten (klicken zum Entfernen)",
     },
@@ -104,6 +114,8 @@ TEXTOS = {
         "selo_pergunta": "DOMANDA VELOCE",
         "selo_simnao": "SÌ O NO?",
         "selo_terminal": "TI ASPETTO NEL TERMINALE",
+        "selo_notify": "TASK COMPLETATO",
+        "ok": "OK",
         "fav_salvar": "Salva questo saluto nei preferiti",
         "fav_salva": "Nei preferiti (clicca per togliere)",
     },
@@ -118,6 +130,8 @@ TEXTOS = {
         "selo_pergunta": "БЫСТРЫЙ ВОПРОС",
         "selo_simnao": "ДА ИЛИ НЕТ?",
         "selo_terminal": "ЖДУ ВАС В ТЕРМИНАЛЕ",
+        "selo_notify": "ЗАДАЧА ВЫПОЛНЕНА",
+        "ok": "OK",
         "fav_salvar": "Добавить это обращение в избранное",
         "fav_salva": "В избранном (нажмите, чтобы убрать)",
     },
@@ -132,6 +146,8 @@ TEXTOS = {
         "selo_pergunta": "快速提问",
         "selo_simnao": "是还是否？",
         "selo_terminal": "在终端等你",
+        "selo_notify": "任务已完成",
+        "ok": "OK",
         "fav_salvar": "把这句开场白加入收藏",
         "fav_salva": "已收藏（点击取消）",
     },
@@ -146,6 +162,8 @@ TEXTOS = {
         "selo_pergunta": "ちょっと質問",
         "selo_simnao": "はい／いいえ？",
         "selo_terminal": "ターミナルでお待ちしています",
+        "selo_notify": "タスク完了",
+        "ok": "OK",
         "fav_salvar": "この呼びかけをお気に入りに追加",
         "fav_salva": "お気に入り登録済み（クリックで解除）",
     },
@@ -156,6 +174,8 @@ VARIANTES = {
     "pt-PT": ("pt", {
         "entrada": "✏️  Ou escreva a sua resposta e prima Enter",
         "selo_terminal": "ESPERO POR SI NO TERMINAL",
+        "selo_notify": "TAREFA CONCLUÍDA",
+        "ok": "OK",
         "fav_salvar": "Guardar esta chamada nos favoritos",
         "fav_salva": "Está nos favoritos (clique para retirar)",
     }),

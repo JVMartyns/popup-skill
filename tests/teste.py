@@ -442,5 +442,91 @@ try:
 finally:
     os.environ.pop("POPUP_FAVORITES", None)
 
+print("12. Preferências de apresentação")
+import preferencias as pref
+arq = f"{S}/prefs.txt"
+os.environ["POPUP_PREFERENCES"] = arq
+os.environ.pop("POPUP_MODE", None); os.environ.pop("POPUP_MODO", None)
+if os.path.exists(arq): os.unlink(arq)
+checa("preferência: padrão window", pref.modo() == "window" and pref.origem() == "default")
+checa("preferência: grava dialog", pref.gravar("dialog") == "dialog" and "mode = dialog" in open(arq).read())
+checa("preferência: lê o arquivo", pref.modo() == "dialog" and pref.origem() == "file")
+os.environ["POPUP_MODE"] = "notification"
+checa("preferência: POPUP_MODE vence o arquivo", pref.modo() == "notification" and pref.origem() == "env")
+checa("preferência: --mode vence POPUP_MODE", pref.modo("window") == "window" and pref.origem("window") == "flag")
+os.environ.pop("POPUP_MODE")
+try:
+    pref.gravar("barra"); invalido = False
+except ValueError:
+    invalido = True
+checa("preferência: valor inválido é recusado", invalido)
+os.environ.pop("POPUP_PREFERENCES", None)
+
+cod, out, err, ch = roda(["preference"], [], env_extra={"POPUP_PREFERENCES": arq})
+checa("CLI preference: imprime o modo do arquivo", (cod, out) == (0, "dialog"), (cod, out, err))
+cod, out, err, ch = roda(["preference", "list"], [], env_extra={"POPUP_PREFERENCES": arq})
+checa("CLI preference list: modo, origem e arquivo",
+      cod == 0 and "mode: dialog" in out and "source: file" in out and arq in out, (out, err))
+cod, out, err, ch = roda(["preference", "set", "window"], [], env_extra={"POPUP_PREFERENCES": arq})
+checa("CLI preference set: grava e imprime",
+      cod == 0 and "mode: window" in out and "mode = window" in open(arq).read(), (out, err))
+cod, out, err, ch = roda(["preference", "set", "dialog"],
+                         [], env_extra={"POPUP_PREFERENCES": arq, "POPUP_MODE": "notification"})
+checa("CLI preference set: avisa que POPUP_MODE vence",
+      cod == 0 and ("POPUP_MODE" in err or "source: env" in out), (out, err))
+
+print("13. Modo notification")
+cod, out, err, ch = roda(["ask", "--lang", "en", "--greeting", "G?", "--question", "Q?",
+                          "--mode", "notification"], [])
+checa("notification: ask sai 6 sem abrir janela", cod == 6 and not ch, (cod, ch, err))
+cod, out, err, ch = roda(["yesno", "--lang", "en", "--greeting", "G?", "--question", "Q?",
+                          "--mode", "notification"], [])
+checa("notification: yesno sai 6 sem abrir janela", cod == 6 and not ch, (cod, ch, err))
+cod, out, err, ch = roda(["notify", "--lang", "pt-BR", "--greeting", "Terminei",
+                          "--mode", "notification"], ["0|"])
+checa("notification: notify envia urgency normal",
+      cod == 0 and ch and ch[0]["prog"] == "notify-send"
+      and "--urgency=normal" in ch[0]["argv"], (cod, ch, err))
+cod, out, err, ch = roda(["terminal", "--lang", "pt-BR", "--greeting", "Terminei",
+                          "--question", "Q?", "--mode", "notification"], ["0|"])
+checa("notification: terminal envia urgency critical",
+      cod == 0 and ch and "--urgency=critical" in ch[0]["argv"], (cod, ch, err))
+cod, out, err, ch = roda(["notify", "--lang", "pt-BR", "--greeting", "Terminei",
+                          "--mode", "notification"], ["1|"])
+checa("notification: falha do notificador sai 6", cod == 6 and "notification" in err, (cod, err))
+
+print("14. notify em window/dialog")
+cod, out, err, ch = roda(["notify", "--lang", "pt-BR", "--greeting", "Terminei",
+                          "--backend", "zenity"], ["0|"])
+checa("notify window: zenity com botão OK e exit 0",
+      cod == 0 and ch and "--ok-label=OK" in ch[0]["argv"], (cod, ch, err))
+cod, out, err, ch = roda(["notify", "--lang", "pt-BR", "--greeting", "Terminei",
+                          "--backend", "zenity"], ["5|"])
+checa("notify window: timeout vira exit 0", cod == 0, (cod, err))
+
+print("15. Apresentação dialog")
+import popup
+visto = {}
+def rodar_falso(cmd, timeout):
+    visto["cmd"] = cmd
+    return 0, "ok", ""
+original = popup.rodar
+popup.rodar = rodar_falso
+try:
+    popup.ui_gtk(alvo(modo="notify", chamada="G", pergunta="", contexto="",
+                      timeout=20, opcao=[], sem_outra=False, idioma_fav="en",
+                      apresentacao="dialog"))
+finally:
+    popup.rodar = original
+cmd = visto.get("cmd") or []
+checa("GTK dialog: --apresentacao dialog no comando",
+      "--apresentacao" in cmd and cmd[cmd.index("--apresentacao") + 1] == "dialog", cmd)
+
+cod, out, err, ch = roda_win(["notify", "--lang", "en", "--greeting", "Done"], ["0|ok"])
+x = ch[0]["xaml"] if ch else ""
+checa("Windows notify: selo, botão OK e exit 0",
+      cod == 0 and out == "ok" and 'x:Name="okBtn"' in x and "TASK COMPLETED" in x,
+      (cod, out, err))
+
 print("\n" + ("TUDO OK" if not falhas else f"{len(falhas)} FALHA(S): {falhas}"))
 sys.exit(1 if falhas else 0)

@@ -188,7 +188,7 @@ collects no data. See [PRIVACY.md](PRIVACY.md).
   or Tkinter); `git branch --show-current`
   to show the branch in the window title; optionally `canberra-gtk-play` (Linux),
   `afplay` (macOS) or a system beep (Windows) for the sound. The agent may also run
-  `notify-send` when a question is left unanswered. On native Windows the WPF window
+  `popup.py notify` when a question is left unanswered. On native Windows the WPF window
   loads the DLLs from `skills/popup/assets/wpf/` into PowerShell.
 - **Writes:** `~/.config/popup/favorites.txt` (your favorite greetings) and
   `~/.local/state/popup/historico.json` (greetings shown per working folder, kept for

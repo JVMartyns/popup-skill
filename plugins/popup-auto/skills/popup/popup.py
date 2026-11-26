@@ -6,7 +6,9 @@ Usage:
                     [--option "emoji|title|description"]... [--no-other] [--timeout S]
   popup.py yesno    --greeting TXT --question TXT [--context TXT] [--timeout S]
   popup.py terminal --greeting TXT --question TXT [--timeout S]
+  popup.py notify   --greeting TXT [--question TXT] [--context TXT] [--timeout S]
   popup.py doctor                         show the environment and the interface that would be used
+  popup.py preference [list | set MODE]   window | dialog | notification
   popup.py favorite list [--lang X]
   popup.py favorite add --lang X "greeting"
   popup.py favorite rm  --lang X "greeting"
@@ -14,6 +16,7 @@ Usage:
   --lang CODE        language of the window texts (pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja);
                      use the one you wrote the greeting in. No translation → English.
                      Without --lang: POPUP_LANG, then the system language, then English.
+  --mode MODE        window | dialog | notification (or POPUP_MODE); overrides the file
   --backend NAME[,NAME...]  force the interface (or POPUP_BACKEND):
                      gtk, zenity, kdialog, osascript, wpf, powershell, tkinter
 
@@ -22,6 +25,9 @@ Exit: 0 = answered, 1 = closed / "Not now" / "No" (yesno), 5 = timeout,
       6 = no screen or no interface available (ask in the terminal),
       7 = greeting refused (repeated, favorite after favorite, or favorite of another
           language): write another greeting and run again. The reason goes to stderr.
+      notification mode: ask/yesno exit 6 (ask in the terminal); terminal/notify exit 0
+      when the notification is sent, or 6 when no notifier is available.
+      notify in window/dialog exits 0 on OK, Esc or timeout.
 
 Portuguese names from version 0.1 still work as aliases: pergunta, simnao, diagnostico,
 favorita, --chamada, --pergunta, --contexto, --opcao, --sem-outra, --idioma.
@@ -40,6 +46,8 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import textos as tx
 import favoritas as fav
+import preferencias as pref
+import notificacao as notif
 import wpf
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -257,9 +265,13 @@ def ordem(forcado):
     return ordem_padrao()
 
 
-def diagnostico(forcado, idioma, origem):
+def diagnostico(forcado, idioma, origem, modo_apresentacao=None, origem_modo="default"):
     print(f"system: {sys.platform}")
     print(f"language: {idioma} (from {origem})")
+    print(f"mode: {modo_apresentacao or pref.modo()} (from {origem_modo})")
+    print(f"preferences: {pref.caminho()}")
+    if (modo_apresentacao or pref.modo()) == "notification":
+        print(f"notifier: {notif.descricao()}")
     if WSL:
         print(f"wsl: yes · powershell.exe: {exe_powershell() or 'not found'}")
     if LINUX:
@@ -285,7 +297,8 @@ def diagnostico(forcado, idioma, origem):
 
 def ui_gtk(a):
     cmd = [python_gtk(), UI_GTK, a.modo, "--chamada", a.chamada, "--pergunta", a.pergunta,
-           "--contexto", a.contexto, "--timeout", str(a.timeout), "--idioma", a.idioma_fav]
+           "--contexto", a.contexto, "--timeout", str(a.timeout), "--idioma", a.idioma_fav,
+           "--apresentacao", a.apresentacao]
     for o in a.opcao:
         cmd += ["--opcao", o]
     if a.sem_outra:
@@ -316,6 +329,9 @@ def ui_zenity(a):
     if a.modo == "terminal":
         cod, _ = zenity("--info", f"--text={t}", f"--ok-label=🏃 {T['ja_vou']}")
         return ("ok" if cod == OK else None), cod
+    if a.modo == "notify":
+        cod, _ = zenity("--info", f"--text={t}", f"--ok-label={T['ok']}")
+        return ("ok" if cod == OK else None), (OK if cod in (OK, TIMEOUT) else cod)
 
     ops = opcoes(a)
     if ops:
@@ -354,6 +370,9 @@ def ui_kdialog(a):
     if a.modo == "terminal":
         cod, _ = kdialog("--ok-label", f"🏃 {T['ja_vou']}", "--msgbox", t)
         return ("ok" if cod == OK else None), cod
+    if a.modo == "notify":
+        cod, _ = kdialog("--ok-label", T["ok"], "--msgbox", t)
+        return ("ok" if cod == OK else None), (OK if cod in (OK, TIMEOUT) else cod)
 
     ops = opcoes(a)
     if ops:
@@ -426,6 +445,9 @@ def ui_osascript(a):
     if a.modo == "terminal":
         cod, _ = osa(AS_DIALOGO, t, ttl, str(prazo.resta()), "terminal", T["ja_vou"], "")
         return ("ok" if cod == OK else None), cod
+    if a.modo == "notify":
+        cod, _ = osa(AS_DIALOGO, t, ttl, str(prazo.resta()), "terminal", T["ok"], "")
+        return ("ok" if cod == OK else None), (OK if cod in (OK, TIMEOUT) else cod)
 
     ops = opcoes(a)
     if ops:
@@ -501,7 +523,7 @@ function Botao($pai, $t, $valor, $codigo, $largo) {
 }
 
 [void](Rotulo $d.chamada 14 $true $laranja)
-[void](Rotulo $d.pergunta 11 $false $null)
+if ($d.pergunta) { [void](Rotulo $d.pergunta 11 $false $null) }
 if ($d.contexto) { [void](Rotulo $d.contexto 9 $false ([Drawing.Color]::Gray)) }
 
 $ops = @($d.opcoes)
@@ -526,6 +548,7 @@ $rodape.Controls.Add($cont)
 switch ($d.modo) {
   'simnao'   { [void](Botao $rodape $d.t.nao 'no' 1 $false); $f.AcceptButton = (Botao $rodape $d.t.sim 'yes' 0 $false) }
   'terminal' { $f.AcceptButton = (Botao $rodape $d.t.ja_vou 'ok' 0 $false) }
+  'notify'   { $f.AcceptButton = (Botao $rodape $d.t.ok 'ok' 0 $false) }
   default    { [void](Botao $rodape $d.t.agora_nao $null 1 $false) }
 }
 $p.Controls.Add($rodape)
@@ -534,11 +557,11 @@ function Contador { $m = [math]::Floor($script:rest / 60); $s = $script:rest % 6
   $cont.Text = $d.cpre + ('{0}:{1:00}' -f $m, $s) + $d.cpos }
 Contador
 $timer = New-Object Windows.Forms.Timer; $timer.Interval = 1000
-$timer.add_Tick({ $script:rest--; if ($script:rest -le 0) { $script:resp = $null; $script:cod = 5; $f.Close() } else { Contador } })
+$timer.add_Tick({ $script:rest--; if ($script:rest -le 0) { $script:resp = $null; $script:cod = if ($d.modo -eq 'notify') { 0 } else { 5 }; $f.Close() } else { Contador } })
 $timer.Start()
 
 $f.add_KeyDown({ param($s, $e)
-  if ($e.KeyCode -eq 'Escape') { $script:resp = $null; $script:cod = 1; $f.Close(); return }
+  if ($e.KeyCode -eq 'Escape') { $script:resp = $null; $script:cod = if ($d.modo -eq 'notify') { 0 } else { 1 }; $f.Close(); return }
   $n = [int]$e.KeyCode - 48
   if ($n -ge 1 -and $n -le 9 -and $n -le $ops.Count -and -not ($script:tb -and $script:tb.Focused)) {
     $script:resp = $ops[$n - 1].valor; $script:cod = 0; $f.Close() }
@@ -677,10 +700,13 @@ def ui_tkinter(a):
     f_pergunta = base.copy(); f_pergunta.configure(size=12)
     f_menor = base.copy(); f_menor.configure(size=9)
 
+    def fechar(codigo):
+        fim(None, OK if a.modo == "notify" else codigo)
+
     root.title(sem_emoji(titulo_janela()))
     root.resizable(False, False)
-    root.protocol("WM_DELETE_WINDOW", lambda: fim(None, NAO))
-    root.bind("<Escape>", lambda _e: fim(None, NAO))
+    root.protocol("WM_DELETE_WINDOW", lambda: fechar(NAO))
+    root.bind("<Escape>", lambda _e: fechar(NAO))
 
     quadro = tk.Frame(root, padx=24, pady=18)
     quadro.pack(fill="both", expand=True)
@@ -691,7 +717,8 @@ def ui_tkinter(a):
                  anchor="w", **kw).pack(anchor="w", fill="x", pady=(0, 8))
 
     rot(a.chamada, f_chamada, "#D97757")
-    rot(a.pergunta, f_pergunta)
+    if a.pergunta:
+        rot(a.pergunta, f_pergunta)
     if a.contexto:
         rot(a.contexto, f_menor, "gray50")
 
@@ -729,6 +756,10 @@ def ui_tkinter(a):
         tk.Button(rodape, text=T["ja_vou"], default="active",
                   command=lambda: fim("ok", OK)).pack(side="right")
         root.bind("<Return>", lambda _e: fim("ok", OK))
+    elif a.modo == "notify":
+        tk.Button(rodape, text=T["ok"], default="active",
+                  command=lambda: fim("ok", OK)).pack(side="right")
+        root.bind("<Return>", lambda _e: fim("ok", OK))
     else:
         tk.Button(rodape, text=T["agora_nao"], command=lambda: fim(None, NAO)).pack(side="right")
 
@@ -741,7 +772,7 @@ def ui_tkinter(a):
 
     def tick():
         if estado["rest"] <= 0:
-            fim(None, TIMEOUT)
+            fim(None, OK if a.modo == "notify" else TIMEOUT)
             return
         m, s = divmod(estado["rest"], 60)
         pre, pos = contador_partes()
@@ -764,6 +795,35 @@ UIS = {"gtk": ui_gtk, "zenity": ui_zenity, "kdialog": ui_kdialog,
 
 
 # ---------------------------------------------------------------- principal
+
+def cmd_preferencia(p, a):
+    acao = a.extra[0] if a.extra else ""
+    if acao == "":
+        print(pref.modo())
+        return
+    if acao == "list":
+        m = pref.modo()
+        o = pref.origem()
+        c = pref.caminho()
+        print(f"mode: {m}")
+        print(f"source: {o}")
+        print(f"file: {c}")
+        return
+    if acao == "set":
+        if len(a.extra) < 2:
+            p.error("preference set needs a mode (window, dialog, notification)")
+        novo = a.extra[1]
+        if novo not in ("window", "dialog", "notification"):
+            p.error(f"invalid mode: {novo}")
+        gravado = pref.gravar(novo)
+        origem = pref.origem()
+        print(f"mode: {gravado}")
+        print(f"source: {origem}")
+        if origem == "env":
+            aviso("POPUP_MODE overrides the file; set POPUP_MODE to change it")
+        return
+    p.error('use: preference [list | set MODE]')
+
 
 def cmd_favorita(p, a):
     acao = a.extra[0] if a.extra else "list"
@@ -796,7 +856,8 @@ def cmd_favorita(p, a):
 
 MODOS = {  # nome público → nome interno
     "ask": "pergunta", "yesno": "simnao", "terminal": "terminal",
-    "doctor": "diagnostico", "favorite": "favorita",
+    "doctor": "diagnostico", "favorite": "favorita", "notify": "notify",
+    "preference": "preferencia",
     # apelidos em português da versão 0.1
     "pergunta": "pergunta", "simnao": "simnao", "diagnostico": "diagnostico", "favorita": "favorita",
 }
@@ -804,7 +865,7 @@ MODOS = {  # nome público → nome interno
 
 def main():
     p = argparse.ArgumentParser(prog="popup.py", description="Ask the user through a desktop pop-up.")
-    p.add_argument("modo", choices=list(MODOS), metavar="{ask,yesno,terminal,doctor,favorite}")
+    p.add_argument("modo", choices=list(MODOS), metavar="{ask,yesno,terminal,doctor,favorite,notify,preference}")
     p.add_argument("extra", nargs="*", help="favorite: list | add TEXT | rm TEXT")
 
     def opcao(novo, antigo, dest, **kw):
@@ -822,17 +883,29 @@ def main():
     opcao("--no-other", "--sem-outra", "sem_outra", action="store_true", default=False,
           help="ask: no free-text field")
     opcao("--lang", "--idioma", "idioma", default="", help="language code of the conversation")
+    p.add_argument("--mode", choices=["window", "dialog", "notification"], dest="apresentacao",
+                   default=None, metavar="MODE",
+                   help="presentation mode (or POPUP_MODE): window, dialog or notification")
     p.add_argument("--timeout", type=int, default=300, metavar="S", help="seconds (default 300)")
     p.add_argument("--backend", default=os.environ.get("POPUP_BACKEND", ""), metavar="NAMES",
                    help="force interface(s): gtk,zenity,kdialog,osascript,wpf,powershell,tkinter")
     a = p.parse_intermixed_args()  # aceita "favorite add --lang ja TEXTO"
     a.modo = MODOS[a.modo]
+    flag_modo = a.apresentacao
+    a.apresentacao = pref.modo(flag_modo)
+    if a.modo == "notify" and a.timeout == 300:
+        a.timeout = 20
+
+    origem_modo = pref.origem(flag_modo)
 
     global T
     a.idioma_bruto = a.idioma.strip()
     if a.modo == "favorita":
         a.idioma_fav = a.idioma_bruto
         cmd_favorita(p, a)
+        return
+    if a.modo == "preferencia":
+        cmd_preferencia(p, a)
         return
     if a.extra:
         p.error(f"unexpected arguments: {' '.join(a.extra)}")
@@ -843,10 +916,25 @@ def main():
     T = tx.textos(a.idioma)
 
     if a.modo == "diagnostico":
-        diagnostico(a.backend, a.idioma, origem)
+        diagnostico(a.backend, a.idioma, origem, a.apresentacao, origem_modo)
         return
-    if not a.chamada or not a.pergunta:
-        p.error("--greeting and --question are required")
+    if not a.chamada:
+        p.error("--greeting is required")
+    if a.modo != "notify" and not a.pergunta:
+        p.error("--question is required")
+
+    if a.apresentacao == "notification":
+        if a.modo in ("pergunta", "simnao"):
+            aviso("notification mode: there is no window; ask in the terminal")
+            sys.exit(SEM_UI)
+        if not notif.enviar(a, urgente=(a.modo == "terminal")):
+            aviso("could not send the notification; ask in the terminal")
+            sys.exit(SEM_UI)
+        sys.exit(0)
+    if a.modo == "notify" and not notif.disponivel():
+        aviso("no notifier available; ask in the terminal")
+        sys.exit(SEM_UI)
+
     if a.modo == "pergunta" and not a.opcao:
         a.sem_outra = False
 

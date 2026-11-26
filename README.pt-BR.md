@@ -108,7 +108,7 @@ GTK4 + libadwaita + PyGObject (o visual mais completo), ou `zenity`, ou `kdialog
 Tkinter; macOS e Windows usam `osascript` / PowerShell, que já vêm no sistema. No
 Windows, a janela WPF usa as DLLs incluídas em `skills/popup/assets/wpf/` e o
 PowerShell 5.1, ambos já presentes; a alternativa WinForms só precisa do PowerShell.
-Opcionais: `notify-send`, `canberra-gtk-play` (som).
+Opcionais: `popup.py notify`, `canberra-gtk-play` (som).
 
 Para ver o que seria usado, sem abrir janela:
 

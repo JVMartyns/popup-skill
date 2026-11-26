@@ -6,9 +6,13 @@ Uso:
            [--opcao "emoji|título|descrição"]... [--sem-outra] [--timeout S]
   ui_gtk.py simnao   --chamada TXT --pergunta TXT [--contexto TXT] [--timeout S]
   ui_gtk.py terminal --chamada TXT --pergunta TXT [--timeout S]
+  ui_gtk.py notify   --chamada TXT [--pergunta TXT] [--contexto TXT] [--timeout S]
+
+  --apresentacao window|dialog   (padrão window)
 
 Saída: a resposta em stdout.
 Exit: 0 = respondeu, 1 = fechou/"Agora não"/"Não" (simnao), 5 = timeout, 3 = erro.
+      notify: 0 em OK, Esc ou timeout.
 """
 import argparse
 import os
@@ -119,6 +123,12 @@ class Popup(Adw.Application):
         Gtk.StyleContext.add_provider_for_display(
             Gdk.Display.get_default(), prov, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
+        if self.a.apresentacao == "dialog":
+            self._montar_dialogo()
+        else:
+            self._montar_janela()
+
+    def _montar_janela(self):
         self.win = Adw.ApplicationWindow(application=self, title=titulo_janela())
         self.win.set_default_size(620, -1)
         self.win.set_resizable(False)
@@ -127,15 +137,54 @@ class Popup(Adw.Application):
         raiz.add_css_class("popup-bg")
         header = Adw.HeaderBar()
         header.add_css_class("flat")
-        selo = Gtk.Label(label=self.selo_texto())
-        selo.add_css_class("selo")
-        header.set_title_widget(selo)
+        header.set_title_widget(self._selo())
         header.pack_end(self.botao_favorita())
         raiz.append(header)
+        raiz.append(self._corpo())
 
+        self.win.set_content(raiz)
+        self._finalizar(self.win)
+
+    def _montar_dialogo(self):
+        self.win = Gtk.Dialog(application=self, title=titulo_janela(), use_header_bar=True)
+        self.win.set_modal(True)
+        self.win.set_default_size(620, -1)
+        self.win.set_resizable(False)
+
+        wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        wrapper.add_css_class("popup-bg")
+        header = self.win.get_header_bar()
+        if header is not None:
+            header.set_title_widget(self._selo())
+            header.pack_end(self.botao_favorita())
+            # o header nativo é a titlebar: mantém o × único dele
+            if hasattr(header, "set_show_title_buttons"):
+                header.set_show_title_buttons(True)
+            elif hasattr(header, "set_show_end_title_buttons"):
+                header.set_show_start_title_buttons(False)
+                header.set_show_end_title_buttons(False)
+        else:
+            hb = Adw.HeaderBar()
+            hb.add_css_class("flat")
+            hb.set_title_widget(self._selo())
+            hb.pack_end(self.botao_favorita())
+            if hasattr(hb, "set_show_start_title_buttons"):
+                hb.set_show_start_title_buttons(False)
+            if hasattr(hb, "set_show_end_title_buttons"):
+                hb.set_show_end_title_buttons(False)
+            wrapper.append(hb)
+        wrapper.append(self._corpo())
+        self.win.get_content_area().append(wrapper)
+        self._finalizar(self.win)
+
+    def _selo(self):
+        selo = Gtk.Label(label=self.selo_texto())
+        selo.add_css_class("selo")
+        return selo
+
+    def _corpo(self):
         corpo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14,
                         margin_start=28, margin_end=28, margin_bottom=22, margin_top=4)
-        raiz.append(corpo)
 
         topo = Gtk.Box(spacing=16)
         if os.path.exists(MASCOTE):
@@ -146,7 +195,8 @@ class Popup(Adw.Application):
             topo.append(img)
         textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, hexpand=True)
         textos.append(self.rotulo(self.a.chamada, "chamada"))
-        textos.append(self.rotulo(self.a.pergunta, "pergunta"))
+        if self.a.pergunta:
+            textos.append(self.rotulo(self.a.pergunta, "pergunta"))
         if self.a.contexto:
             textos.append(self.rotulo(self.a.contexto, "contexto"))
         topo.append(textos)
@@ -161,16 +211,23 @@ class Popup(Adw.Application):
         for w in self.botoes_rodape():
             rodape.append(w)
         corpo.append(rodape)
+        return corpo
 
-        self.win.set_content(raiz)
+    def _finalizar(self, win):
+        win.connect("close-request", self._fechar)
         teclas = Gtk.EventControllerKey()
         teclas.connect("key-pressed", self.tecla)
-        self.win.add_controller(teclas)
+        win.add_controller(teclas)
 
         self.tick()
         GLib.timeout_add_seconds(1, self.tick)
         tocar_som()
-        self.win.present()
+        win.present()
+
+    def _fechar(self, *_):
+        if self.a.modo == "notify":
+            self.codigo = 0
+        return False
 
     def botao_favorita(self):
         """⭐ guarda a chamada atual nas favoritas do idioma; clicar de novo tira."""
@@ -264,6 +321,9 @@ class Popup(Adw.Application):
     def corpo_terminal(self, corpo):
         pass
 
+    def corpo_notify(self, corpo):
+        pass
+
     def botoes_rodape(self):
         def botao(rotulo, cb, principal=False):
             b = Gtk.Button(label=rotulo)
@@ -281,6 +341,10 @@ class Popup(Adw.Application):
             ok = botao(f"🏃  {T['ja_vou']}", lambda: self.responder("ok", 0), True)
             self.win.set_default_widget(ok)
             return [ok]
+        if self.a.modo == "notify":
+            ok = botao(T["ok"], lambda: self.responder("ok", 0), True)
+            self.win.set_default_widget(ok)
+            return [ok]
         return [botao(T["agora_nao"], lambda: self.responder(None, 1))]
 
     # ---------- eventos ----------
@@ -291,7 +355,7 @@ class Popup(Adw.Application):
 
     def tecla(self, _ctl, keyval, _code, _state):
         if keyval == Gdk.KEY_Escape:
-            self.responder(None, 1)
+            self.responder(None, 0 if self.a.modo == "notify" else 1)
             return True
         if self.a.modo == "pergunta" and not (
                 hasattr(self, "entrada") and self.entrada.has_focus()
@@ -305,7 +369,7 @@ class Popup(Adw.Application):
 
     def tick(self):
         if self.restante <= 0:
-            self.responder(None, 5)
+            self.responder(None, 0 if self.a.modo == "notify" else 5)
             return False
         m, s = divmod(self.restante, 60)
         self.lbl_contador.set_label(T["contador"].format(m=m, s=s))
@@ -315,14 +379,15 @@ class Popup(Adw.Application):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("modo", choices=["pergunta", "simnao", "terminal"])
+    p.add_argument("modo", choices=["pergunta", "simnao", "terminal", "notify"])
     p.add_argument("--chamada", required=True)
-    p.add_argument("--pergunta", required=True)
+    p.add_argument("--pergunta", default="")
     p.add_argument("--contexto", default="")
     p.add_argument("--opcao", action="append", default=[])
     p.add_argument("--sem-outra", action="store_true")
     p.add_argument("--timeout", type=int, default=300)
     p.add_argument("--idioma", default="")
+    p.add_argument("--apresentacao", choices=["window", "dialog"], default="window")
     a = p.parse_args()
     global T
     idioma = tx.resolver(a.idioma)[0]
