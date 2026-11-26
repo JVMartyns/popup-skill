@@ -12,6 +12,7 @@ Usage:
   popup.py favorite list [--lang X]
   popup.py favorite add --lang X "greeting"
   popup.py favorite rm  --lang X "greeting"
+  popup.py --version                      show the version
 
   --lang CODE        language of the window texts (pt-BR, pt-PT, en, es, fr, de, it, ru, zh, ja);
                      use the one you wrote the greeting in. No translation → English.
@@ -55,6 +56,7 @@ UI_GTK = os.path.join(AQUI, "ui_gtk.py")
 
 OK, NAO, TIMEOUT, SEM_UI, RECUSADA = 0, 1, 5, 6, 7
 MARCA_TIMEOUT = "§TIMEOUT§"
+VERSAO = "0.5.0"
 
 LINUX = sys.platform.startswith(("linux", "freebsd", "openbsd", "netbsd"))
 MAC = sys.platform == "darwin"
@@ -266,6 +268,7 @@ def ordem(forcado):
 
 
 def diagnostico(forcado, idioma, origem, modo_apresentacao=None, origem_modo="default"):
+    print(f"version: {VERSAO}")
     print(f"system: {sys.platform}")
     print(f"language: {idioma} (from {origem})")
     print(f"mode: {modo_apresentacao or pref.modo()} (from {origem_modo})")
@@ -867,6 +870,7 @@ def main():
     p = argparse.ArgumentParser(prog="popup.py", description="Ask the user through a desktop pop-up.")
     p.add_argument("modo", choices=list(MODOS), metavar="{ask,yesno,terminal,doctor,favorite,notify,preference}")
     p.add_argument("extra", nargs="*", help="favorite: list | add TEXT | rm TEXT")
+    p.add_argument("--version", action="version", version=f"popup {VERSAO}")
 
     def opcao(novo, antigo, dest, **kw):
         if kw.get("action") != "store_true":

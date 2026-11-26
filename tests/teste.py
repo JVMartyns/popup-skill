@@ -506,6 +506,9 @@ checa("notify window: timeout vira exit 0", cod == 0, (cod, err))
 
 print("15. Apresentação dialog")
 import popup
+checa("versão do popup.py bate com VERSION",
+      popup.VERSAO == open(os.path.join(os.path.dirname(os.path.dirname(SK)), "VERSION")).read().strip(),
+      popup.VERSAO)
 visto = {}
 def rodar_falso(cmd, timeout):
     visto["cmd"] = cmd

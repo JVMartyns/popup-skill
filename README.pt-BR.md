@@ -101,6 +101,35 @@ ele não carregar skills, cole o `SKILL.md` nas instruções dele (`AGENTS.md`,
 `GEMINI.md`…) e troque `SKILL_DIR` pelo caminho absoluto da pasta. Defina `POPUP_AGENT`
 com o nome do agente para ele aparecer no título da janela.
 
+### Atualizar
+
+A versão do plugin fica em `plugins/*/.claude-plugin/plugin.json`; o Claude Code
+só baixa uma cópia nova quando essa versão muda.
+
+O auto-update vem **desligado por padrão** em marketplaces de comunidade. Para o
+Claude Code atualizar no início da sessão, abra `/plugin` → **Marketplaces** →
+`popup-skill` e ligue o auto-update.
+
+Para atualizar à mão:
+
+```bash
+claude plugin marketplace update popup-skill
+claude plugin update popup@popup-skill      # ou popup-auto@popup-skill
+```
+
+Dentro de uma sessão, `/plugin` → **Installed** → selecione o plugin → **Update now**;
+depois rode `/reload-plugins` ou inicie outra sessão. `/plugin list` mostra a
+versão instalada.
+
+Se você copiou a pasta da skill à mão (`git clone` + `cp`), atualize com
+`git pull` no clone e copie `skills/popup/` de novo.
+
+Confira a versão que o script está rodando:
+
+```bash
+$POPUP --version      # ou: $POPUP doctor
+```
+
 ## Requisitos
 
 Python 3 e uma sessão gráfica. Cada interface precisa da sua ferramenta:
